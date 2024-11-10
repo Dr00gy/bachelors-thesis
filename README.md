@@ -1,8 +1,10 @@
 # Bachelor's thesis
 Optical Mapping Technology Sequence Mapping Visualization Tool / Nástroj pro vizualizaci mapování sekvencí technologie optického mapování
 
-## Czech assignment
-Optické mapování genomu je technologie, která umožňuje zkoumání rozsáhlých strukturálních variant zkoumaného genomu. Aby bylo možné sledovat odchylky zkoumaného genomu od referenčního genomu, je zapotřebí sekvence ať už simulovaného nebo skutečného charakteru namapovat na referenční sekvenci. Cílem této práce by mělo být vytvoření aplikace, která by vhodným způsobem vizualizovala různá namapování sekvencí na referenční genom a umožnila vizuální identifikaci oblastí, do kterých může být obtížné sekvence přesně mapovat. Vizualizace bude cílit na dva pohledy, první pohled bude z hlediska jedné zkoumané sekvence a jejích alternativních mapování napříč genomem, druhý pohled bude zaměřen na jednu oblast genomu a k ní budou doplněny různé sekvence. Zásady pro vypracování práce jsou následující:
+## Assignment
+Optical genome mapping is a technology that allows for the investigation of large structural variants in the studied genome.
+To observe deviations of the studied genome from the reference genome, it is necessary to map sequences, whether simulated or real, onto the reference sequence. The goal of this project should be to create an application that appropriately visualizes different sequence mappings onto the reference genome and enables visual identification of regions where accurate sequence mapping may be difficult. The visualization will focus on two views: the first view will examine one studied sequence and its alternative mappings across the genome, while the second view will focus on one genomic region, supplemented with various sequences. The guidelines for this project are as follows:
 
-1) Seznámení se s technologií optického mapování.
-2) Navrhnout a naimplementovat ve zvolené technologii vizualizace optického mapování.
+1) Familiarize yourself with optical mapping technology.
+2) Design and implement optical mapping visualizations using the chosen technology.
+3) The proposed visualization will allow for comparison of mappings to different reference sequences.
