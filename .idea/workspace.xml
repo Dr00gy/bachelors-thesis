@@ -8,15 +8,128 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="cf8c4042-a2c2-496a-b49a-5fed8b12554c" name="Changes" comment="Created better prototype">
-      <change afterPath="$PROJECT_DIR$/chm13.2bit" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/chm13.fasta" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/chm13_to_hg38.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/hg38.2bit" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/hg38.fasta" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/query.fasta" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test.fasta" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test1.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test2.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/.rustc_info.json" beforeDir="false" afterPath="$PROJECT_DIR$/target/.rustc_info.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/125zr9ig44qnnyw0.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/13t5ldifd21vykkh.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/13v4140j1viqesn8.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/149ityvr84dcp7j5.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/14ydwugtwz6llchb.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1ai8o7i6lc4gsbuo.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1durnvm1v8b1rrat.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1e9exfm3htax0rzp.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1h1rfvjsfj2io59l.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1h2p0ei5yc4ksf4q.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1hqa8as3655q1exy.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1i9ay23pdpvndzkx.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1idave2ju9809pke.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1l8tidtryxpruyoe.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1lrbtwmigdr4n5jl.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1mkq0ojea9vtjcpu.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1n776zcu5rwj8rzs.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1rewl3mmebaa7fy3.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1s8nj5rvg84lcw1b.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1vc7ss0gdnn0ecb9.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1vvxlu3ca17h9vt6.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1x369fjhirfu0ag0.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/1zcl1glcz6glp64x.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/20am6fjiebfo24nf.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/24gk9as65fde9axi.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/26gcoi8u5ocs5n38.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2cbp9cbavtbrdc1c.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2e6zbyi7m6af4v8c.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2fgmy5da8pklma5r.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2fjopozy1vq3vjq9.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2gp84wblksltmm42.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2hk7tph3d0w8josu.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2lp64cfew6avx7cx.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2lxuhfxl89158oi.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2mzhdiau1x58k5vy.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2nzfleuelawxj4h1.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2oa1ovufe5rgbt2u.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2pyeyvwrdfx33w5i.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2rgqex3l4nvjz9ih.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2tcjhcub2v9smho0.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2uyiz64bs8kmfvu9.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/2y7i0m5p47kfrgf7.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/30xemm47kd68mzb0.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/33x5y34x0x5jjn33.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/33y6ov68xjjl1cqg.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/353c21ivvrl3s3jf.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/35ylp7zmp3kmd6qt.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/39l2edf6h09ihf1u.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3awt6e1afzu5ghze.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3bf0bxafsb2twlln.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3cihcf6yhllaqpci.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3faoer344c2ym5fr.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3i3eufh28v06w6l7.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3jerelpw9sv92trr.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3nxjpp9nqijtj2u6.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3pninygly6zkj1s.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3q1pub97qvt7f6fl.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3q7tpodorm1ipxff.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3q8qq37q122mj7e0.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3qanpkuxq76jz209.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3whn6hsqazby6y5i.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/3yk5yn029675vhm.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/40kbu07j8lna2q4h.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/40x42289har289sv.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/42a1jdog249bdp06.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/432kgrurzsiub84g.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/455xrcjjmhnnpcsw.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/459c2lpmss6ohzly.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/47l0ucvr8drvoc9e.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/48emgo37o06wmlto.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4arfb0715qgr4lk6.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4aycuj0hxtxvigs5.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4bfh1qdkaoj9rs9w.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4bm7crwrqmpwl2u0.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4d7etmc5txranu9i.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4e2yt8tiuysnuwkc.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4g3ddnivempvj89e.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4h0ud3g46aaz2ybr.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4i2qa8i8v4v3plqi.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4jxa7ru195rve4jd.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4k653912nunxh1pm.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4llg80d6vqdpdhqs.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4w1imnwxfqc8ora.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4xbmutbroc7pw7cw.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/4z7zbex6r8k75uvk.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/50xpvaee2kyeqoki.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/585gcspbm2ss9lge.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/59ayuyzqro3rh0f3.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/5bfb1g7xonllj8on.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/6nohxtxywm0obpt.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/8gyw3un1pnrqwma.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/dcqzyis57mqijch.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/dep-graph.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/dqwwd4uc0z34tjo.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/dujhscbc2w5r2kd.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/fatkwj82cwdoksr.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/h4cuevr3sywgefh.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/hmf99lhpoqmo9ek.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/hoikcsn1i939b3c.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/iapqifwqdv3bbmm.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/j6m1ug1llrjd1b2.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/jzuos3ecbhnl5ww.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/klgfsoc75r22onz.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/n0b48rbr5c84ziw.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/nbqoosgrgebp4ed.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/o5g0zv94e966efd.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/query-cache.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/vjv1fi3l0s5oanq.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/work-products.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/wy6y651ohomjixg.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/y1iowxti7m1j23e.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/yhyotgbglefvkvy.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/yla3s23l9qxucoh.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/z8pe2nwsmgjoyxq.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0-1cnacyogvrvaema0d46x8ecdh/zta9ev1mc5g7x6x.o" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/debug/incremental/thesis_2bit_test-323i8edvlaixp/s-h1o3fmyumu-120i0x0.lock" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -41,26 +154,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Cargo.Run.executor": "Run",
-    "Cargo.Test.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.rust.reset.selective.auto.import": "true",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "/home/darin/RustroverProjects/thesis-2bit-test",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
-    "org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon": "",
-    "org.rust.disableDetachedFileInspection/home/darin/RustroverProjects/thesis-2bit-test/src/main.rs": "true",
-    "org.rust.first.attach.projects": "true",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Cargo.Run.executor&quot;: &quot;Run&quot;,
+    &quot;Cargo.Test.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.rust.reset.selective.auto.import&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/darin/RustroverProjects/thesis-2bit-test&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
+    &quot;org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon&quot;: &quot;&quot;,
+    &quot;org.rust.disableDetachedFileInspection/home/darin/RustroverProjects/thesis-2bit-test/src/main.rs&quot;: &quot;true&quot;,
+    &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
@@ -124,6 +237,8 @@
       <workItem from="1731183870824" duration="2567000" />
       <workItem from="1731224289997" duration="6833000" />
       <workItem from="1731231172923" duration="2278000" />
+      <workItem from="1731234501458" duration="352000" />
+      <workItem from="1731248054503" duration="774000" />
     </task>
     <task id="LOCAL-00001" summary="Created better prototype">
       <option name="closed" value="true" />

@@ -1,0 +1,1 @@
+pub const CHUNK_SIZE: usize = 100000; // 100 000 bases at a time (memory management)
