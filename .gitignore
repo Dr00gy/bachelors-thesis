@@ -1,0 +1,17 @@
+# Rust BE
+/backend/target
+**/*.rs.bk
+
+# Svelte frontend (minimal)
+/frontend/node_modules
+/frontend/.svelte-kit
+/frontend/build
+/frontend/dist
+
+# Environment files
+.env
+/backend/.env
+/frontend/.env
+
+# IDE
+.idea/
