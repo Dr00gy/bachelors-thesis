@@ -1,22 +1,38 @@
-use axum::{routing::post, Router};
+use axum::{routing::{get, post}, Router, http::Method};
 use std::sync::Arc;
+use axum::extract::DefaultBodyLimit;
+use tower_http::cors::{CorsLayer, Any};
 
 mod xmap;
 mod api;
 
+async fn root() -> &'static str {
+    "XMAP Backend Server is running!\n\nEndpoints:\n- GET /\n- POST /api/match"
+}
+
 #[tokio::main]
 async fn main() {
     let cache = Arc::new(xmap::XmapCache::new());
+    
+    let cors = CorsLayer::new()
+        .allow_origin([
+            "http://localhost:5173".parse().unwrap(),
+            "http://127.0.0.1:5173".parse().unwrap(),
+        ])
+        .allow_methods(Any)
+        .allow_headers(Any);
 
     let app = Router::new()
+        .route("/", get(root)) 
         .route("/api/match", post(api::stream_xmap_matches))
-        .with_state(cache);
+        .with_state(cache)
+        .layer(DefaultBodyLimit::disable()); // CORS middleware
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:8080")
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
         .await
         .unwrap();
 
-    println!("Server running on http://127.0.0.1:8080");
+    println!("Server running on http://0.0.0.0:8080");
 
     axum::serve(listener, app).await.unwrap();
 }

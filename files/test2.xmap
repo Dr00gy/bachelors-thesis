@@ -1,0 +1,3 @@
+#h XmapEntryID	QryContigID	RefContigID	QryStartPos	QryEndPos	RefStartPos	RefEndPos	Orientation	Confidence	HitEnum
+10	100	3	1500.0	2500.0	9000.0	10000.0	+	16.0	1M
+11	200	4	3500.0	4500.0	11000.0	12000.0	-	15.5	1M

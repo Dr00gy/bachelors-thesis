@@ -11,76 +11,91 @@ use std::sync::Arc;
 use std::borrow::Cow;
 use bytes::Bytes;
 
-use crate::xmap::{XmapCache, hash_content, stream_matches};
+use crate::xmap::{XmapCache, XmapFileSet, hash_content, stream_matches_multi};
 
 pub async fn stream_xmap_matches(
     State(cache): State<Arc<XmapCache>>,
     mut multipart: Multipart,
 ) -> Result<Response<Body>, StatusCode> {
-    let mut chm13_bytes: Option<Bytes> = None;
-    let mut hg38_bytes: Option<Bytes> = None;
-
+    let mut files: Vec<(String, Bytes)> = Vec::new();
+    
     while let Some(field) = multipart.next_field().await.map_err(|_| StatusCode::BAD_REQUEST)? {
         let name = field.name().unwrap_or("").to_string();
         let bytes = field.bytes().await.map_err(|_| StatusCode::BAD_REQUEST)?;
+        files.push((name, bytes));
+    }
+    
+    if files.is_empty() || files.len() > 3 {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    
+    if files.len() == 1 {
+        return Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/octet-stream")
+            .body(Body::empty())
+            .unwrap());
+    }
+    
+    let mut file_hashes = Vec::with_capacity(files.len());
+    let mut file_records = Vec::with_capacity(files.len());
 
-        if name.to_lowercase().contains("chm13") {
-            chm13_bytes = Some(bytes);
-        } else if name.to_lowercase().contains("hg38") {
-            hg38_bytes = Some(bytes);
+    for (name, bytes) in files {
+        let content_str = std::str::from_utf8(&bytes).map_err(|_| StatusCode::BAD_REQUEST)?;
+        let hash = hash_content(content_str);
+        file_hashes.push(hash);
+
+        let bytes_arc = Arc::new(bytes);
+        let records = tokio::task::spawn_blocking({
+            let cache = Arc::clone(&cache);
+            let content = Arc::clone(&bytes_arc);
+            move || {
+                let s: Cow<str> = Cow::Borrowed(std::str::from_utf8(&content).unwrap());
+                cache.get_or_parse(hash, &s)
+            }
+        })
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+        file_records.push(records);
+    }
+    
+    let mut all_records_with_indices = Vec::with_capacity(file_records.len());
+
+    for (idx, records) in file_records.into_iter().enumerate() {
+        if idx == 0 {
+            // first file w/o index
+            all_records_with_indices.push(records);
+        } else {
+            let hash = file_hashes[idx];
+            tokio::task::spawn_blocking({
+                let cache = Arc::clone(&cache);
+                let records_clone = Arc::clone(&records);
+                move || cache.get_or_build_index(hash, records_clone)
+            })
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            all_records_with_indices.push(records);
         }
     }
-
-    let chm13_bytes = chm13_bytes.ok_or(StatusCode::BAD_REQUEST)?;
-    let hg38_bytes = hg38_bytes.ok_or(StatusCode::BAD_REQUEST)?;
-
-    let chm13_hash = hash_content(std::str::from_utf8(&chm13_bytes).map_err(|_| StatusCode::BAD_REQUEST)?);
-    let hg38_hash = hash_content(std::str::from_utf8(&hg38_bytes).map_err(|_| StatusCode::BAD_REQUEST)?);
     
-    let chm13_bytes = Arc::new(chm13_bytes);
-    let hg38_bytes = Arc::new(hg38_bytes);
-
-    let chm13_records = tokio::task::spawn_blocking({
-        let cache = Arc::clone(&cache);
-        let content = Arc::clone(&chm13_bytes);
-        move || { // copy obsession
-            let s: Cow<str> = Cow::Borrowed(std::str::from_utf8(&content).unwrap());
-            cache.get_or_parse(chm13_hash, &s)
-        }
-    })
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .map_err(|_| StatusCode::BAD_REQUEST)?;
-
-    let hg38_records = tokio::task::spawn_blocking({
-        let cache = Arc::clone(&cache);
-        let content = Arc::clone(&hg38_bytes);
-        move || {
-            let s: Cow<str> = Cow::Borrowed(std::str::from_utf8(&content).unwrap());
-            cache.get_or_parse(hg38_hash, &s)
-        }
-    })
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .map_err(|_| StatusCode::BAD_REQUEST)?;
-
-    let hg38_index = tokio::task::spawn_blocking({
-        let cache = Arc::clone(&cache);
-        let records = Arc::clone(&hg38_records);
-        move || cache.get_or_build_index(hg38_hash, records)
-    })
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let fileset = Arc::new(XmapFileSet::new(
+        all_records_with_indices.into_boxed_slice()
+    ));
 
     // streaming pipe
     let (mut writer, reader) = tokio::io::duplex(131072);
 
+    // spawn matching and streaming task
+    let cache_key = file_hashes.into_boxed_slice();
     tokio::spawn(async move {
-        let rx = stream_matches(chm13_records, hg38_index);
+        let rx = stream_matches_multi(fileset);
 
         while let Ok(match_data) = rx.recv() {
             let match_arc = Arc::new(match_data.clone());
-            cache.cache_match((chm13_hash, hg38_hash), match_arc);
+            cache.cache_match(cache_key.clone(), match_arc);
 
             if let Ok(bytes) = bincode::serialize(&match_data) {
                 let len = (bytes.len() as u32).to_le_bytes();
