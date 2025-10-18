@@ -45,6 +45,63 @@
   $: circumference = 2 * Math.PI * (radius - strokeWidth / 2);
   $: showChromosomes = scale >= 1.0;
 
+  // max confidence for normalization
+  $: maxConfidence = (() => {
+    let max = 0;
+    for (const match of matches) {
+      for (const record of match.records) {
+        if (record.confidence > max) {
+          max = record.confidence;
+        }
+      }
+    }
+    return max || 1;
+  })();
+
+  // stats per QueryContigID, will figure out efficiency later
+  $: queryContigStats = (() => {
+    const stats = new Map<number, {
+      totalOccurrences: number;
+      genomeOccurrences: Map<number, number>;
+      chromosomeOccurrences: Map<string, number>; // key: "genomeIdx-chrNum"
+      maxConfidence: number;
+    }>();
+
+    for (const match of matches) {
+      const qryId = match.qry_contig_id;
+      
+      if (!stats.has(qryId)) {
+        stats.set(qryId, {
+          totalOccurrences: 0,
+          genomeOccurrences: new Map(),
+          chromosomeOccurrences: new Map(),
+          maxConfidence: 0
+        });
+      }
+
+      const stat = stats.get(qryId)!;
+
+      for (const record of match.records) {
+        stat.totalOccurrences++;
+        
+        // genome occurrences
+        const genomeCount = stat.genomeOccurrences.get(record.file_index) || 0;
+        stat.genomeOccurrences.set(record.file_index, genomeCount + 1);
+        
+        // chromosome occurrences
+        const chrKey = `${record.file_index}-${record.ref_contig_id}`;
+        const chrCount = stat.chromosomeOccurrences.get(chrKey) || 0;
+        stat.chromosomeOccurrences.set(chrKey, chrCount + 1);
+        
+        if (record.confidence > stat.maxConfidence) {
+          stat.maxConfidence = record.confidence;
+        }
+      }
+    }
+
+    return stats;
+  })();
+
   $: availableQueryContigIds = (() => {
     const ids = new Set<number>();
     matches.forEach(match => ids.add(match.qry_contig_id));
@@ -59,19 +116,33 @@
 
   $: availableChromosomes = Array.from({ length: 23 }, (_, i) => (i + 1).toString());
 
-  // sizes from RefLen field
+  // sizes from RefLen field - sum all unique chromosomes per genome
   $: genomeSizes = (() => {
-    const sizes = new Map<number, number>();
+    const chromosomesByGenome = new Map<number, Map<number, number>>();    // unique chromosomes per genome: Map<fileIndex, Map<chromosome, refLen>>
     
     for (const match of matches) {
       for (const record of match.records) {
         const fileIdx = record.file_index;
-        const currentMax = sizes.get(fileIdx) || 0;
-        // ref_len as the genome size, will sum it up when i feel like it, not sure if maps are complete either rn
-        if (record.ref_len > currentMax) {
-          sizes.set(fileIdx, record.ref_len);
+        const chrNum = record.ref_contig_id;
+        
+        if (!chromosomesByGenome.has(fileIdx)) {
+          chromosomesByGenome.set(fileIdx, new Map());
+        }
+        
+        const chromosomes = chromosomesByGenome.get(fileIdx)!;
+        
+        // storing the ref_len for this chromosome, first ref
+        if (!chromosomes.has(chrNum)) {
+          chromosomes.set(chrNum, record.ref_len);
         }
       }
+    }
+    
+    // sum unique chromosome lengths for each genome
+    const sizes = new Map<number, number>();
+    for (const [fileIdx, chromosomes] of chromosomesByGenome.entries()) {
+      const totalSize = Array.from(chromosomes.values()).reduce((sum, len) => sum + len, 0);
+      sizes.set(fileIdx, totalSize);
     }
     
     // minimum sizes for display
@@ -80,6 +151,8 @@
         sizes.set(idx, 100000);
       }
     });
+    
+    console.log('Genome sizes calculated:', Array.from(sizes.entries()));
     
     return sizes;
   })();
@@ -211,6 +284,7 @@
     const paths = [];
     
     console.log('Generating flow paths for', matches.length, 'matches');
+    console.log('Max confidence:', maxConfidence);
     
     for (const match of matches) {
       if (match.records.length < 2) continue;
@@ -242,11 +316,17 @@
             toRecord.ref_len
           );
           
-          const intensity = Math.min(1, Math.max(fromRecord.confidence, toRecord.confidence) / 20);
+          // normalizes confidence to 0-1 range
+          const avgConfidence = (fromRecord.confidence + toRecord.confidence) / 2;
+          const normalizedConfidence = avgConfidence / maxConfidence;
+          
+          // op from 10% to 100% based on normalized confidence
+          const opacity = 0.1 + (normalizedConfidence * 0.9);
+          
           const flowData = createFlowPath(
             fromAngle, 
             toAngle, 
-            intensity,
+            normalizedConfidence,
             fromRecord.orientation,
             toRecord.orientation
           );
@@ -254,8 +334,8 @@
           paths.push({
             ...flowData,
             color: files[fromRecord.file_index]?.color || '#888',
-            opacity: 0.4 + intensity * 0.4,
-            width: (1 + intensity * 2) * scale,
+            opacity: opacity,
+            width: (1 + normalizedConfidence * 2) * scale,
             fromChromosome: fromRecord.ref_contig_id,
             toChromosome: toRecord.ref_contig_id,
             confidence: Math.max(fromRecord.confidence, toRecord.confidence),
@@ -358,6 +438,7 @@
         <span>{matches.length} matches | {files.length} genomes</span>
         <span>Total genome size: {totalGenomeSize.toLocaleString()} bp</span>
         <span>Flow lines: {filteredFlowPaths.length} {showDuplicates ? '(self-flow)' : '(cross-genome)'}</span>
+        <span class="confidence-stat">Max confidence: {maxConfidence.toFixed(2)}</span>
       </div>
     </div>
 
@@ -462,6 +543,54 @@
   </div>
 
   <div class="info">
+    <!-- Overview Section -->
+    {#if matches.length > 0}
+      <div class="section overview-section">
+        <h2>Query Contig Overview ({queryContigStats.size} unique)</h2>
+        <div class="overview-list">
+          {#each Array.from(queryContigStats.entries()).sort((a, b) => b[1].totalOccurrences - a[1].totalOccurrences).slice(0, 10) as [qryId, stat]}
+            <div class="overview-item">
+              <div class="overview-header">
+                <strong>QryContig {qryId}</strong>
+                <span class="overview-total">{stat.totalOccurrences} total occurrences</span>
+                <span class="overview-confidence">Max conf: {stat.maxConfidence.toFixed(2)}</span>
+              </div>
+              
+              <div class="genome-breakdown">
+                <div class="breakdown-label">Per genome:</div>
+                {#each Array.from(stat.genomeOccurrences.entries()) as [genomeIdx, count]}
+                  <span class="genome-badge" style="background: {files[genomeIdx]?.color}20; color: {files[genomeIdx]?.color}; border-color: {files[genomeIdx]?.color}">
+                    {files[genomeIdx]?.name}: {count}x
+                  </span>
+                {/each}
+              </div>
+              
+              <div class="chromosome-breakdown">
+                <div class="breakdown-label">Per chromosome:</div>
+                <div class="chr-grid">
+                  {#each Array.from(stat.chromosomeOccurrences.entries()).sort((a, b) => {
+                    const [aGenome, aChr] = a[0].split('-').map(Number);
+                    const [bGenome, bChr] = b[0].split('-').map(Number);
+                    return aGenome !== bGenome ? aGenome - bGenome : aChr - bChr;
+                  }) as [chrKey, count]}
+                    {@const [genomeIdx, chrNum] = chrKey.split('-').map(Number)}
+                    <span class="chr-mini-badge" style="background: {files[genomeIdx]?.color}20; color: {files[genomeIdx]?.color}; border-color: {files[genomeIdx]?.color}">
+                      G{genomeIdx} Chr{chrNum}: {count}
+                    </span>
+                  {/each}
+                </div>
+              </div>
+            </div>
+          {/each}
+          {#if queryContigStats.size > 10}
+            <div class="more-matches">
+              +{queryContigStats.size - 10} more query contigs...
+            </div>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
     <!-- Filters Section -->
     <div class="section filters-section">
       <h2>Filters</h2>
@@ -521,15 +650,12 @@
           </select>
         </div>
 
-        <!-- Clear Filters Button -->
         <div class="filter-group">
           <button on:click={clearAllFilters} class="clear-filters-btn">
             Clear All Filters
           </button>
         </div>
       </div>
-
-      <!-- Active Filters Display -->
       {#if selectedQueryContigId || selectedGenome1 || selectedChromosome}
         <div class="active-filters">
           <h3>Active Filters:</h3>
@@ -669,6 +795,11 @@
     gap: 0.25rem;
   }
 
+  .confidence-stat {
+    font-weight: 600;
+    color: #3b82f6;
+  }
+
   .info {
     flex: 1;
     min-width: 0;
@@ -696,7 +827,99 @@
     color: #374151;
   }
 
-  /* Filters Section */
+  /* Overview Section */
+  .overview-section {
+    background: #f0f9ff;
+    border-color: #bfdbfe;
+  }
+
+  .overview-list {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  .overview-item {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  .overview-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .overview-header strong {
+    color: #1e40af;
+    font-size: 0.875rem;
+  }
+
+  .overview-total {
+    padding: 0.25rem 0.5rem;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .overview-confidence {
+    padding: 0.25rem 0.5rem;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .genome-breakdown,
+  .chromosome-breakdown {
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .breakdown-label {
+    font-weight: 500;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
+  }
+
+  .genome-breakdown {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .genome-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid;
+  }
+
+  .chr-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+  }
+
+  .chr-mini-badge {
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.65rem;
+    font-weight: 500;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
   .filters-section {
     background: #f8fafc;
     border-color: #e2e8f0;
