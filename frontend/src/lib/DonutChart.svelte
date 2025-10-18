@@ -14,6 +14,7 @@
     ref_end_pos: number;
     orientation: string;
     confidence: number;
+    ref_len: number;
   }
 
   interface BackendMatch {
@@ -24,6 +25,14 @@
 
   export let files: FileData[] = [];
   export let matches: BackendMatch[] = [];
+  export let showDuplicates = false;
+
+  // filters
+  let selectedQueryContigId = '';
+  let selectedGenome1 = '';
+  let selectedGenome2 = '';
+  let selectedChromosome = '';
+  let selectedGenomeForChromosome = '';
 
   let scale = 1.0;
   const baseRadius = 80;
@@ -36,7 +45,21 @@
   $: circumference = 2 * Math.PI * (radius - strokeWidth / 2);
   $: showChromosomes = scale >= 1.0;
 
-  // sizes from RefStartPos and RefEndPos, will refactor later
+  $: availableQueryContigIds = (() => {
+    const ids = new Set<number>();
+    matches.forEach(match => ids.add(match.qry_contig_id));
+    return Array.from(ids).sort((a, b) => a - b);
+  })();
+
+  $: availableGenomes = files.map((file, index) => ({
+    value: index.toString(),
+    label: file.name,
+    color: file.color
+  }));
+
+  $: availableChromosomes = Array.from({ length: 23 }, (_, i) => (i + 1).toString());
+
+  // sizes from RefLen field
   $: genomeSizes = (() => {
     const sizes = new Map<number, number>();
     
@@ -44,10 +67,9 @@
       for (const record of match.records) {
         const fileIdx = record.file_index;
         const currentMax = sizes.get(fileIdx) || 0;
-        // maximum RefEndPos as the genome size indicator
-        const recordSize = Math.max(record.ref_start_pos, record.ref_end_pos);
-        if (recordSize > currentMax) {
-          sizes.set(fileIdx, recordSize);
+        // ref_len as the genome size, will sum it up when i feel like it, not sure if maps are complete either rn
+        if (record.ref_len > currentMax) {
+          sizes.set(fileIdx, record.ref_len);
         }
       }
     }
@@ -83,7 +105,7 @@
         dashOffset: -offset,
         percentage: (pct * 100).toFixed(1),
         showLabel: pct >= 0.01,
-        showChromosomes: true, // always show chromosomes rn, will fix zoom later
+        showChromosomes: true,
         startAngle,
         endAngle,
         angleRange: endAngle - startAngle
@@ -127,21 +149,22 @@
     return chrDiv.midAngle;
   }
 
-  function getPositionInChromosome(refStartPos: number, refEndPos: number): number {
+  function getPositionInChromosome(refStartPos: number, refEndPos: number, refLen: number): number {
     const avgPos = (refStartPos + refEndPos) / 2;
-    const chromosomeLength = 250_000_000; // temp hardcoded val
-    return Math.min(1, Math.max(0, avgPos / chromosomeLength));
+    // ref_len as the chromosome length
+    return Math.min(1, Math.max(0, avgPos / refLen));
   }
 
   function getAngleInChromosome(
     fileIndex: number, 
     chromosome: number, 
     refStartPos: number, 
-    refEndPos: number
+    refEndPos: number,
+    refLen: number
   ): number {
     const chrStartAngle = getChromosomeAngle(fileIndex, chromosome, 'start');
     const chrEndAngle = getChromosomeAngle(fileIndex, chromosome, 'end');
-    const positionPct = getPositionInChromosome(refStartPos, refEndPos);
+    const positionPct = getPositionInChromosome(refStartPos, refEndPos, refLen);
     
     return chrStartAngle + (chrEndAngle - chrStartAngle) * positionPct;
   }
@@ -192,55 +215,114 @@
     for (const match of matches) {
       if (match.records.length < 2) continue;
       
-      const maxConfidence = Math.max(...match.records.map(r => r.confidence));
-      
-      for (let i = 0; i < match.records.length - 1; i++) {
-        const fromRecord = match.records[i];
-        const toRecord = match.records[i + 1];
-        
-        // if file indices are out of bounds, skip
-        if (fromRecord.file_index >= files.length || toRecord.file_index >= files.length) {
-          continue;
+      // flow lines between ALL pairs of records
+      for (let i = 0; i < match.records.length; i++) {
+        for (let j = i + 1; j < match.records.length; j++) {
+          const fromRecord = match.records[i];
+          const toRecord = match.records[j];
+          
+          // file indices out of bounds?
+          if (fromRecord.file_index >= files.length || toRecord.file_index >= files.length) {
+            continue;
+          }
+          
+          const fromAngle = getAngleInChromosome(
+            fromRecord.file_index,
+            fromRecord.ref_contig_id,
+            fromRecord.ref_start_pos,
+            fromRecord.ref_end_pos,
+            fromRecord.ref_len
+          );
+          
+          const toAngle = getAngleInChromosome(
+            toRecord.file_index,
+            toRecord.ref_contig_id,
+            toRecord.ref_start_pos,
+            toRecord.ref_end_pos,
+            toRecord.ref_len
+          );
+          
+          const intensity = Math.min(1, Math.max(fromRecord.confidence, toRecord.confidence) / 20);
+          const flowData = createFlowPath(
+            fromAngle, 
+            toAngle, 
+            intensity,
+            fromRecord.orientation,
+            toRecord.orientation
+          );
+          
+          paths.push({
+            ...flowData,
+            color: files[fromRecord.file_index]?.color || '#888',
+            opacity: 0.4 + intensity * 0.4,
+            width: (1 + intensity * 2) * scale,
+            fromChromosome: fromRecord.ref_contig_id,
+            toChromosome: toRecord.ref_contig_id,
+            confidence: Math.max(fromRecord.confidence, toRecord.confidence),
+            fromFileIndex: fromRecord.file_index,
+            toFileIndex: toRecord.file_index,
+            isSameGenome: fromRecord.file_index === toRecord.file_index,
+            qryContigId: match.qry_contig_id,
+            fromRecord,
+            toRecord
+          });
         }
-        
-        const fromAngle = getAngleInChromosome(
-          fromRecord.file_index,
-          fromRecord.ref_contig_id,
-          fromRecord.ref_start_pos,
-          fromRecord.ref_end_pos
-        );
-        
-        const toAngle = getAngleInChromosome(
-          toRecord.file_index,
-          toRecord.ref_contig_id,
-          toRecord.ref_start_pos,
-          toRecord.ref_end_pos
-        );
-        
-        const intensity = Math.min(1, fromRecord.confidence / 20); // nromalising confidence might b needed
-        const flowData = createFlowPath(
-          fromAngle, 
-          toAngle, 
-          intensity,
-          fromRecord.orientation,
-          toRecord.orientation
-        );
-        
-        paths.push({
-          ...flowData,
-          color: files[fromRecord.file_index]?.color || '#888',
-          opacity: 0.4 + intensity * 0.4,
-          width: (1 + intensity * 2) * scale,
-          fromChromosome: fromRecord.ref_contig_id,
-          toChromosome: toRecord.ref_contig_id,
-          confidence: fromRecord.confidence
-        });
       }
     }
     
     console.log('Generated', paths.length, 'flow paths');
     return paths;
   })();
+
+  $: filteredFlowPaths = (() => {
+    let filtered = flowPaths;
+
+    // self-flow/cross-genome filter first
+    if (showDuplicates) {
+      filtered = filtered.filter(path => path.isSameGenome);
+    } else {
+      filtered = filtered.filter(path => !path.isSameGenome);
+    }
+
+    if (selectedQueryContigId) {
+      const queryId = parseInt(selectedQueryContigId);
+      filtered = filtered.filter(path => path.qryContigId === queryId);
+    }
+
+    if (selectedGenome1 !== '' && selectedGenome2 !== '') {
+      const genome1 = parseInt(selectedGenome1);
+      const genome2 = parseInt(selectedGenome2);
+      filtered = filtered.filter(path => 
+        (path.fromFileIndex === genome1 && path.toFileIndex === genome2) ||
+        (path.fromFileIndex === genome2 && path.toFileIndex === genome1)
+      );
+    } else if (selectedGenome1 !== '') {
+      const genome = parseInt(selectedGenome1);
+      filtered = filtered.filter(path => 
+        path.fromFileIndex === genome || path.toFileIndex === genome
+      );
+    }
+
+    if (selectedChromosome && selectedGenomeForChromosome !== '') {
+      const chromosome = parseInt(selectedChromosome);
+      const genome = parseInt(selectedGenomeForChromosome);
+      filtered = filtered.filter(path => 
+        (path.fromFileIndex === genome && path.fromChromosome === chromosome) ||
+        (path.toFileIndex === genome && path.toChromosome === chromosome)
+      );
+    }
+
+    console.log('Filtered to', filtered.length, 'flow paths');
+    return filtered;
+  })();
+
+  function clearAllFilters() {
+    selectedQueryContigId = '';
+    selectedGenome1 = '';
+    selectedGenome2 = '';
+    selectedChromosome = '';
+    selectedGenomeForChromosome = '';
+  }
 
   function getOrientationMarker(point: {x: number, y: number}, orientation: string, angle: number) {
     const markerSize = 6 * scale;
@@ -256,9 +338,6 @@
       return `M ${point.x} ${point.y} L ${tipX} ${tipY}`;
     }
   }
-  $: console.log('Segments:', segments);
-  $: console.log('Genome sizes:', genomeSizes);
-  $: console.log('Flow paths count:', flowPaths.length);
 </script>
 
 <div class="container">
@@ -278,6 +357,7 @@
       <div class="stats">
         <span>{matches.length} matches | {files.length} genomes</span>
         <span>Total genome size: {totalGenomeSize.toLocaleString()} bp</span>
+        <span>Flow lines: {filteredFlowPaths.length} {showDuplicates ? '(self-flow)' : '(cross-genome)'}</span>
       </div>
     </div>
 
@@ -285,7 +365,7 @@
       <svg width="400" height="400" viewBox="0 0 400 400">
         <!-- Flow lines -->
         <g class="flow-lines">
-          {#each flowPaths as flow}
+          {#each filteredFlowPaths as flow}
             <path
               d={flow.path}
               stroke={flow.color}
@@ -295,7 +375,7 @@
               stroke-linecap="round"
             />
             
-            <!-- Orientation markers? not working well yet -->
+            <!-- Orientation markers -->
             <g class="orientation-markers">
               <path
                 d={getOrientationMarker(
@@ -375,13 +455,106 @@
           </g>
         {/if}
 
-        <!-- centet pt? -->
+        <!-- center pt -->
         <circle cx={centerX} cy={centerY} r={2} fill="#666" />
       </svg>
     </div>
   </div>
 
   <div class="info">
+    <!-- Filters Section -->
+    <div class="section filters-section">
+      <h2>Filters</h2>
+      <div class="filters-grid">
+        
+        <!-- Query Contig ID Filter -->
+        <div class="filter-group">
+          <label for="query-contig-filter">Query Contig ID:</label>
+          <select id="query-contig-filter" bind:value={selectedQueryContigId}>
+            <option value="">All Query Contigs</option>
+            {#each availableQueryContigIds as id}
+              <option value={id}>QryContig {id}</option>
+            {/each}
+          </select>
+        </div>
+
+        <!-- Genome Filter -->
+        <div class="filter-group">
+          <label for="genome1-filter">Genome 1:</label>
+          <select id="genome1-filter" bind:value={selectedGenome1}>
+            <option value="">All Genomes</option>
+            {#each availableGenomes as genome}
+              <option value={genome.value}>{genome.label}</option>
+            {/each}
+          </select>
+        </div>
+
+        <!-- Genome 2 Filter (for pairs) -->
+        <div class="filter-group">
+          <label for="genome2-filter">Genome 2 (optional):</label>
+          <select id="genome2-filter" bind:value={selectedGenome2}>
+            <option value="">Any Genome</option>
+            {#each availableGenomes as genome}
+              <option value={genome.value}>{genome.label}</option>
+            {/each}
+          </select>
+        </div>
+
+        <!-- Chromosome Filter -->
+        <div class="filter-group">
+          <label for="genome-chromosome-filter">Genome for Chromosome:</label>
+          <select id="genome-chromosome-filter" bind:value={selectedGenomeForChromosome}>
+            <option value="">Select Genome</option>
+            {#each availableGenomes as genome}
+              <option value={genome.value}>{genome.label}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="chromosome-filter">Chromosome:</label>
+          <select id="chromosome-filter" bind:value={selectedChromosome} disabled={!selectedGenomeForChromosome}>
+            <option value="">All Chromosomes</option>
+            {#each availableChromosomes as chr}
+              <option value={chr}>Chr {chr}</option>
+            {/each}
+          </select>
+        </div>
+
+        <!-- Clear Filters Button -->
+        <div class="filter-group">
+          <button on:click={clearAllFilters} class="clear-filters-btn">
+            Clear All Filters
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Filters Display -->
+      {#if selectedQueryContigId || selectedGenome1 || selectedChromosome}
+        <div class="active-filters">
+          <h3>Active Filters:</h3>
+          <div class="filter-tags">
+            {#if selectedQueryContigId}
+              <span class="filter-tag">Query Contig: {selectedQueryContigId}</span>
+            {/if}
+            {#if selectedGenome1}
+              <span class="filter-tag">
+                Genome: {availableGenomes.find(g => g.value === selectedGenome1)?.label}
+                {#if selectedGenome2}
+                  ↔ {availableGenomes.find(g => g.value === selectedGenome2)?.label}
+                {/if}
+              </span>
+            {/if}
+            {#if selectedChromosome && selectedGenomeForChromosome}
+              <span class="filter-tag">
+                Chromosome {selectedChromosome} on {availableGenomes.find(g => g.value === selectedGenomeForChromosome)?.label}
+              </span>
+            {/if}
+          </div>
+        </div>
+      {/if}
+    </div>
+
     <div class="section">
       <h2>Genomes ({files.length})</h2>
       {#each files as file, idx}
@@ -432,16 +605,19 @@
         <strong>Total Genome Size:</strong> {totalGenomeSize.toLocaleString()} bp
       </div>
       <div class="debug-item">
-        <strong>Flow Paths:</strong> {flowPaths.length}
+        <strong>Flow Paths:</strong> {filteredFlowPaths.length} {showDuplicates ? '(self-flow)' : '(cross-genome)'}
       </div>
       <div class="debug-item">
-        <strong>Segments:</strong> {segments.length}
+        <strong>Show Self-Flow:</strong> {showDuplicates ? 'ON' : 'OFF'}
       </div>
-      {#each segments as seg, i}
-        <div class="debug-item">
-          <strong>Segment {i}:</strong> {seg.genomeSize.toLocaleString()} bp ({seg.percentage}%)
-        </div>
-      {/each}
+      <div class="debug-item">
+        <strong>Active Filters:</strong> 
+        {selectedQueryContigId ? 'QueryContig ' + selectedQueryContigId + ' ' : ''}
+        {selectedGenome1 ? 'Genome1:' + selectedGenome1 + ' ' : ''}
+        {selectedGenome2 ? 'Genome2:' + selectedGenome2 + ' ' : ''}
+        {selectedChromosome ? 'Chr:' + selectedChromosome + ' ' : ''}
+        {!selectedQueryContigId && !selectedGenome1 && !selectedChromosome ? 'None' : ''}
+      </div>
     </div>
   </div>
 </div>
@@ -511,6 +687,88 @@
     font-weight: 600;
     margin-bottom: 0.75rem;
     color: #374151;
+  }
+
+  h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #374151;
+  }
+
+  /* Filters Section */
+  .filters-section {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+  }
+
+  .filters-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .filter-group label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .filter-group select {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    background: white;
+  }
+
+  .filter-group select:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  .clear-filters-btn {
+    padding: 0.5rem 1rem;
+    background: #6b7280;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    margin-top: 1.25rem;
+  }
+
+  .clear-filters-btn:hover {
+    background: #4b5563;
+  }
+
+  .active-filters {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .filter-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .filter-tag {
+    padding: 0.25rem 0.5rem;
+    background: #3b82f6;
+    color: white;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 500;
   }
 
   .file-item {

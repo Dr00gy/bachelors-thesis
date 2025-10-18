@@ -7,8 +7,7 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8080',
-        changeOrigin: true,
-        // ✅ Prevent proxy from choking on big multipart streams
+        changeOrigin: true, // prevent choking
         timeout: 0,
         proxyTimeout: 0,
         ws: false,

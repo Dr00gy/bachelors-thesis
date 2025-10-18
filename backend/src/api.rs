@@ -18,17 +18,17 @@ pub async fn stream_xmap_matches(
     mut multipart: Multipart,
 ) -> Result<Response<Body>, StatusCode> {
     let mut files: Vec<(String, Bytes)> = Vec::new();
-    
+
     while let Some(field) = multipart.next_field().await.map_err(|_| StatusCode::BAD_REQUEST)? {
         let name = field.name().unwrap_or("").to_string();
         let bytes = field.bytes().await.map_err(|_| StatusCode::BAD_REQUEST)?;
         files.push((name, bytes));
     }
-    
+
     if files.is_empty() || files.len() > 3 {
         return Err(StatusCode::BAD_REQUEST);
     }
-    
+
     if files.len() == 1 {
         return Ok(Response::builder()
             .status(StatusCode::OK)
@@ -36,13 +36,14 @@ pub async fn stream_xmap_matches(
             .body(Body::empty())
             .unwrap());
     }
-    
+
     let mut file_hashes = Vec::with_capacity(files.len());
     let mut file_records = Vec::with_capacity(files.len());
 
     for (name, bytes) in files {
         let content_str = std::str::from_utf8(&bytes).map_err(|_| StatusCode::BAD_REQUEST)?;
         let hash = hash_content(content_str);
+        println!("File '{}' hash: {}", name, hash);
         file_hashes.push(hash);
 
         let bytes_arc = Arc::new(bytes);
@@ -58,9 +59,14 @@ pub async fn stream_xmap_matches(
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
+        println!("Parsed {} records for file '{}'", records.len(), name);
+        for rec in records.iter() {
+            println!("  Record XmapEntryID {}: {:?}", rec.key(), rec.value());
+        }
+
         file_records.push(records);
     }
-    
+
     let mut all_records_with_indices = Vec::with_capacity(file_records.len());
 
     for (idx, records) in file_records.into_iter().enumerate() {
@@ -80,10 +86,12 @@ pub async fn stream_xmap_matches(
             all_records_with_indices.push(records);
         }
     }
-    
+
     let fileset = Arc::new(XmapFileSet::new(
         all_records_with_indices.into_boxed_slice()
     ));
+
+    println!("Created XmapFileSet with {} files", fileset.len());
 
     // streaming pipe
     let (mut writer, reader) = tokio::io::duplex(131072);

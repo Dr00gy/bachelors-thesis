@@ -1,4 +1,4 @@
-use axum::{routing::{get, post}, Router, http::Method};
+use axum::{routing::{get, post}, Router};
 use std::sync::Arc;
 use axum::extract::DefaultBodyLimit;
 use tower_http::cors::{CorsLayer, Any};
@@ -13,7 +13,7 @@ async fn root() -> &'static str {
 #[tokio::main]
 async fn main() {
     let cache = Arc::new(xmap::XmapCache::new());
-    
+
     let cors = CorsLayer::new()
         .allow_origin([
             "http://localhost:5173".parse().unwrap(),
@@ -23,10 +23,11 @@ async fn main() {
         .allow_headers(Any);
 
     let app = Router::new()
-        .route("/", get(root)) 
+        .route("/", get(root))
         .route("/api/match", post(api::stream_xmap_matches))
         .with_state(cache)
-        .layer(DefaultBodyLimit::disable()); // CORS middleware
+        .layer(cors)// CORS middleware
+        .layer(DefaultBodyLimit::disable());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
         .await

@@ -1,25 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import DonutChart from '$lib/DonutChart.svelte';
+  import { fetchMatches, type BackendMatch } from '$lib/bincodeDecoder';
 
-  interface MatchedRecord {
-    file_index: number;
-    ref_contig_id: number;
-    qry_start_pos: number;
-    qry_end_pos: number;
-    ref_start_pos: number;
-    ref_end_pos: number;
-    orientation: string;
-    confidence: number;
+  interface FileData {
+    name: string;
+    rows: number;
+    color: string;
   }
 
-  interface BackendMatch {
-    qry_contig_id: number;
-    file_indices: number[];
-    records: MatchedRecord[];
-  }
-
-  let files = [
+  let files: FileData[] = [
     { name: "genome1.xmap", rows: 0, color: "#3b82f6" },
     { name: "genome2.xmap", rows: 0, color: "#10b981" },
     { name: "genome3.xmap", rows: 0, color: "#f59e0b" }
@@ -28,287 +18,113 @@
   let matches: BackendMatch[] = [];
   let isLoading = false;
   let error = '';
+  let matchCount = 0;
+  let fileInput: HTMLInputElement;
+  let abortController: AbortController | null = null;
+  let showDuplicates = false;
 
-  // without DataView
-  class BincodeDecoder {
-    private data: Uint8Array;
-    private offset: number;
-    private textDecoder: TextDecoder;
+  async function handleFileUpload(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
 
-    constructor(buffer: Uint8Array) {
-      this.data = buffer;
-      this.offset = 0;
-      this.textDecoder = new TextDecoder('utf-8');
-    }
-
-    deserializeU32(): number {
-      const value = 
-        this.data[this.offset] |
-        (this.data[this.offset + 1] << 8) |
-        (this.data[this.offset + 2] << 16) |
-        (this.data[this.offset + 3] << 24);
-      this.offset += 4;
-      return value >>> 0; // convert 2 unsigned
-    }
-
-    deserializeU8(): number {
-      const value = this.data[this.offset];
-      this.offset += 1;
-      return value;
-    }
-
-    deserializeF64(): number {
-      const bytes = this.data.slice(this.offset, this.offset + 8);
-      const view = new DataView(bytes.buffer);
-      const value = view.getFloat64(0, true);
-      this.offset += 8;
-      return value;
-    }
-
-    deserializeChar(): string {
-      const bytes = [];
-      let byte;
-      do {
-        byte = this.data[this.offset];
-        this.offset += 1;
-        bytes.push(byte);
-      } while (byte !== 0);
-      
-      // yoink null terminator and decode
-      bytes.pop();
-      return this.textDecoder.decode(new Uint8Array(bytes));
-    }
-
-    deserializeLen(): number {
-      // bincode uses LEB128 for length encoding
-      let result = 0;
-      let shift = 0;
-      let byte;
-
-      do {
-        byte = this.data[this.offset];
-        this.offset += 1;
-        result |= (byte & 0x7f) << shift;
-        shift += 7;
-      } while (byte & 0x80);
-
-      return result;
-    }
-
-    getRemainingBytes(): number {
-      return this.data.length - this.offset;
-    }
-  }
-
-  async function uploadFiles(fileInputs: FileList) {
-    if (fileInputs.length < 2 || fileInputs.length > 3) {
+    if (fileList.length < 2 || fileList.length > 3) {
       error = 'Please upload 2-3 XMAP files';
       return;
     }
 
+    // for cancelling later, rn tests are so fast that i cant test it
+    if (abortController) {
+      abortController.abort();
+    }
+
+    abortController = new AbortController();
     isLoading = true;
     error = '';
     matches = [];
+    matchCount = 0;
 
-    // file names from actual uploaded files
-    files = Array.from(fileInputs).map((f, i) => ({
-      name: f.name,
+    files = Array.from(fileList).map((file, i) => ({
+      name: file.name,
       rows: 0,
       color: ['#3b82f6', '#10b981', '#f59e0b'][i]
     }));
 
+    console.log('Uploading files:', files.map(f => f.name));
+
     try {
-      const formData = new FormData();
-      for (let i = 0; i < fileInputs.length; i++) {
-        formData.append(`file${i}`, fileInputs[i]);
-      }
-
-      console.log('Sending files:', Array.from(fileInputs).map(f => f.name));
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
-
-      const response = await fetch('/api/match', {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
-      }
-
-      console.log('Response received, processing stream...');
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No reader available');
-
-      let buffer = new Uint8Array();
-      let matchesCount = 0;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const newBuffer = new Uint8Array(buffer.length + value.length);
-        newBuffer.set(buffer);
-        newBuffer.set(value, buffer.length);
-        buffer = newBuffer;
-
-        let offset = 0;
-        while (offset + 4 <= buffer.length) {
-          const length = new DataView(buffer.buffer, offset, 4).getUint32(0, true);
-          offset += 4;
-
-          if (offset + length > buffer.length) {
-            offset -= 4;
-            break;
+      matches = await fetchMatches(
+        Array.from(fileList),
+        (count) => {
+          matchCount = count;
+          if (count % 100 === 0) {
+            console.log(`Processed ${count} matches...`);
           }
-
-          const messageBytes = buffer.slice(offset, offset + length);
-          offset += length;
-
-          try {
-            const matchData = decodeBackendMatch(messageBytes);
-            matches = [...matches, matchData];
-            matchesCount++;
-            
-            if (matchesCount % 100 === 0) {
-              console.log(`Processed ${matchesCount} matches...`);
-            }
-          } catch (e) {
-            console.error('Decode error:', e);
-            if (matchesCount === 0) {
-              debugBincodeStream(messageBytes);
-            }
-          }
-        }
-
-        buffer = buffer.slice(offset);
-      }
+        },
+        abortController.signal
+      );
 
       console.log(`Complete! Found ${matches.length} total matches`);
+      updateFileCounts();
 
     } catch (err) {
       if (err instanceof Error) {
         if (err.name === 'AbortError') {
-          error = 'Request timeout';
+          error = 'Upload cancelled';
         } else {
-          error = `Error: ${err.message}`;
+          error = err.message;
         }
       } else {
-        error = 'Unknown error';
+        error = 'Unknown error occurred';
       }
-      console.error(err);
+      console.error('Upload error:', err);
     } finally {
       isLoading = false;
+      abortController = null;
     }
-  }
-
-  function decodeBackendMatch(bytes: Uint8Array): BackendMatch {
-    const decoder = new BincodeDecoder(bytes);
-    
-    // decode in the same order as Rust struct serialization
-    const qry_contig_id = decoder.deserializeU32();
-    
-    //decode file_indices: Box<[usize]>
-    const file_indices_len = decoder.deserializeLen();
-    const file_indices: number[] = [];
-    for (let i = 0; i < file_indices_len; i++) {
-      file_indices.push(decoder.deserializeU32()); // usize as u32
-    }
-    
-    // decode records: Box<[MatchedRecord]>
-    const records_len = decoder.deserializeLen();
-    const records: MatchedRecord[] = [];
-    for (let i = 0; i < records_len; i++) {
-      records.push(decodeMatchedRecord(decoder));
-    }
-    
-    return {
-      qry_contig_id,
-      file_indices,
-      records
-    };
-  }
-
-  function decodeMatchedRecord(decoder: BincodeDecoder): MatchedRecord {
-    return {
-      file_index: decoder.deserializeU32(), // usize as u32
-      ref_contig_id: decoder.deserializeU8(),
-      qry_start_pos: decoder.deserializeF64(),
-      qry_end_pos: decoder.deserializeF64(),
-      ref_start_pos: decoder.deserializeF64(),
-      ref_end_pos: decoder.deserializeF64(),
-      orientation: decoder.deserializeChar(),
-      confidence: decoder.deserializeF64()
-    };
   }
 
   function updateFileCounts() {
     const fileCounts = new Map<number, number>();
+    
     for (const match of matches) {
       for (const record of match.records) {
-        fileCounts.set(record.file_index, (fileCounts.get(record.file_index) || 0) + 1);
+        const count = fileCounts.get(record.file_index) || 0;
+        fileCounts.set(record.file_index, count + 1);
       }
     }
 
-    files = files.map((f, i) => ({
-      ...f,
+    files = files.map((file, i) => ({
+      ...file,
       rows: fileCounts.get(i) || 0
     }));
   }
 
-  // troubleshooting bincode stream
-  function debugBincodeStream(bytes: Uint8Array) {
-    console.log('Raw bytes length:', bytes.length);
-    console.log('First 20 bytes:', Array.from(bytes.slice(0, 20)));
-    
-    try {
-      const decoder = new BincodeDecoder(bytes);
-      const qry_contig_id = decoder.deserializeU32();
-      console.log('qry_contig_id:', qry_contig_id);
-      
-      const file_indices_len = decoder.deserializeLen();
-      console.log('file_indices_len:', file_indices_len);
-      
-      const file_indices: number[] = [];
-      for (let i = 0; i < file_indices_len; i++) {
-        const idx = decoder.deserializeU32();
-        file_indices.push(idx);
-        console.log(`file_indices[${i}]:`, idx);
-      }
-      
-      const records_len = decoder.deserializeLen();
-      console.log('records_len:', records_len);
-      
-      console.log('Remaining bytes:', decoder.getRemainingBytes());
-      
-    } catch (e) {
-      console.error('Debug decoding failed:', e);
+  function cancelUpload() {
+    if (abortController) {
+      abortController.abort();
     }
   }
 
-  let fileInput: HTMLInputElement;
-
-  async function testBackendConnection() {
+  async function testBackendConnection(): Promise<boolean> {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
-      const response = await fetch('/', {
+      const response = await fetch('http://localhost:8080/', {
         method: 'HEAD',
         signal: controller.signal
       });
       
       clearTimeout(timeoutId);
-      console.log('Backend is reachable');
-      return true;
+      
+      if (response.ok) {
+        console.log('✓ Backend is reachable');
+        return true;
+      } else {
+        throw new Error(`Backend returned ${response.status}`);
+      }
     } catch (err) {
-      console.error('Backend is not reachable:', err);
-      error = 'Backend server is not running. Please start the server on http://127.0.0.1:8080';
+      console.error('✗ Backend is not reachable:', err);
+      error = 'Backend server is not running. Please start the server on http://localhost:8080';
       return false;
     }
   }
@@ -328,14 +144,31 @@
         accept=".xmap"
         multiple
         bind:this={fileInput}
-        on:change={(e) => uploadFiles(e.currentTarget.files!)}
+        on:change={(e) => handleFileUpload(e.currentTarget.files)}
       />
-      <button on:click={() => fileInput.click()}>
-        Upload 2-3 XMAP Files
-      </button>
+      
+      <div class="upload-controls">
+        <button 
+          on:click={() => fileInput.click()}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Processing...' : 'Upload 2-3 XMAP Files'}
+        </button>
+
+        {#if isLoading}
+          <button 
+            on:click={cancelUpload}
+            class="cancel-button"
+          >
+            Cancel
+          </button>
+        {/if}
+      </div>
       
       {#if isLoading}
-        <div class="status">Processing... Found {matches.length} matches so far</div>
+        <div class="status">
+          Processing... Found {matchCount} matches so far
+        </div>
       {/if}
       
       {#if error}
@@ -343,8 +176,28 @@
       {/if}
     </div>
 
+          {#if matches.length > 0}
+        <div class="display-controls">
+          <label class="toggle-label">
+            <input 
+              type="checkbox" 
+              bind:checked={showDuplicates}
+            />
+            <span class="toggle-slider"></span>
+            Show self-flow lines (same genome)
+          </label>
+          <div class="toggle-description">
+            {#if showDuplicates}
+              Showing self-flow lines within the same genome
+            {:else}
+              Showing only flow lines between different genomes
+            {/if}
+          </div>
+        </div>
+      {/if}
+
     {#if matches.length > 0}
-      <DonutChart {files} {matches} />
+      <DonutChart {files} {matches} {showDuplicates} />
     {:else if !isLoading}
       <div class="placeholder">
         Upload XMAP files to see chromosome flow visualization
@@ -376,6 +229,12 @@
     display: none;
   }
 
+  .upload-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
   button {
     padding: 0.75rem 1.5rem;
     background: #3b82f6;
@@ -384,10 +243,24 @@
     border-radius: 0.5rem;
     font-weight: 500;
     cursor: pointer;
+    transition: background 0.2s;
   }
 
-  button:hover {
+  button:hover:not(:disabled) {
     background: #2563eb;
+  }
+
+  button:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  .cancel-button {
+    background: #ef4444;
+  }
+
+  .cancel-button:hover {
+    background: #dc2626;
   }
 
   .status {
@@ -402,6 +275,7 @@
     background: #fef2f2;
     color: #dc2626;
     border-radius: 0.375rem;
+    border: 1px solid #fecaca;
   }
 
   .placeholder {
@@ -409,5 +283,62 @@
     padding: 4rem;
     color: #9ca3af;
     font-size: 1.125rem;
+  }
+
+  .display-controls {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 0.375rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .toggle-label input {
+    display: none;
+  }
+
+  .toggle-slider {
+    width: 3rem;
+    height: 1.5rem;
+    background: #d1d5db;
+    border-radius: 1rem;
+    position: relative;
+    transition: background 0.2s;
+  }
+
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 1.25rem;
+    height: 1.25rem;
+    background: white;
+    border-radius: 50%;
+    top: 0.125rem;
+    left: 0.125rem;
+    transition: transform 0.2s;
+  }
+
+  .toggle-label input:checked + .toggle-slider {
+    background: #3b82f6;
+  }
+
+  .toggle-label input:checked + .toggle-slider::before {
+    transform: translateX(1.5rem);
+  }
+
+  .toggle-description {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-style: italic;
   }
 </style>
