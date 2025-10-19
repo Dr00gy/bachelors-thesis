@@ -412,8 +412,9 @@
   /**
    * Generated flow paths between all record pairs
    */
-  $: flowPaths = (() => {
+$: flowPaths = (() => {
     const paths: FlowPath[] = [];
+    const drawnSelfFlowPaths = new Set<string>();
     
     for (const match of matches) {
       if (match.records.length < 2) continue;
@@ -425,6 +426,17 @@
           
           if (fromRecord.file_index >= files.length || toRecord.file_index >= files.length) {
             continue;
+          }
+          
+          const isSameGenome = fromRecord.file_index === toRecord.file_index;
+          
+          if (isSameGenome) {
+            const pathKey = `${match.qry_contig_id}-${fromRecord.file_index}-${Math.min(fromRecord.ref_contig_id, toRecord.ref_contig_id)}-${Math.max(fromRecord.ref_contig_id, toRecord.ref_contig_id)}`;
+            
+            if (drawnSelfFlowPaths.has(pathKey)) {
+              continue;
+            }
+            drawnSelfFlowPaths.add(pathKey);
           }
           
           const fromAngle = getAngleInChromosome(
@@ -465,7 +477,7 @@
             confidence: Math.max(fromRecord.confidence, toRecord.confidence),
             fromFileIndex: fromRecord.file_index,
             toFileIndex: toRecord.file_index,
-            isSameGenome: fromRecord.file_index === toRecord.file_index,
+            isSameGenome: isSameGenome,
             qryContigId: match.qry_contig_id,
             fromRecord,
             toRecord
