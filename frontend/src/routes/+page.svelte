@@ -3,12 +3,18 @@
   import DonutChart from '$lib/DonutChart.svelte';
   import { fetchMatches, type BackendMatch } from '$lib/bincodeDecoder';
 
+  /**
+   * Represents file metadata for the application
+   */
   interface FileData {
     name: string;
     rows: number;
     color: string;
   }
 
+  /**
+   * Application state
+   */
   let files: FileData[] = [
     { name: "genome1.xmap", rows: 0, color: "#3b82f6" },
     { name: "genome2.xmap", rows: 0, color: "#10b981" },
@@ -23,6 +29,10 @@
   let abortController: AbortController | null = null;
   let showDuplicates = false;
 
+  /**
+   * Handles file upload and match processing
+   * @param fileList - List of uploaded XMAP files
+   */
   async function handleFileUpload(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
 
@@ -31,7 +41,6 @@
       return;
     }
 
-    // for cancelling later, rn tests are so fast that i cant test it
     if (abortController) {
       abortController.abort();
     }
@@ -48,21 +57,15 @@
       color: ['#3b82f6', '#10b981', '#f59e0b'][i]
     }));
 
-    console.log('Uploading files:', files.map(f => f.name));
-
     try {
       matches = await fetchMatches(
         Array.from(fileList),
         (count) => {
           matchCount = count;
-          if (count % 100 === 0) {
-            console.log(`Processed ${count} matches...`);
-          }
         },
         abortController.signal
       );
 
-      console.log(`Complete! Found ${matches.length} total matches`);
       updateFileCounts();
 
     } catch (err) {
@@ -75,13 +78,15 @@
       } else {
         error = 'Unknown error occurred';
       }
-      console.error('Upload error:', err);
     } finally {
       isLoading = false;
       abortController = null;
     }
   }
 
+  /**
+   * Updates file row counts based on match data
+   */
   function updateFileCounts() {
     const fileCounts = new Map<number, number>();
     
@@ -98,12 +103,19 @@
     }));
   }
 
+  /**
+   * Cancels ongoing file upload
+   */
   function cancelUpload() {
     if (abortController) {
       abortController.abort();
     }
   }
 
+  /**
+   * Tests backend server connectivity
+   * @returns Promise resolving to connection status
+   */
   async function testBackendConnection(): Promise<boolean> {
     try {
       const controller = new AbortController();
@@ -117,18 +129,19 @@
       clearTimeout(timeoutId);
       
       if (response.ok) {
-        console.log('✓ Backend is reachable');
         return true;
       } else {
         throw new Error(`Backend returned ${response.status}`);
       }
     } catch (err) {
-      console.error('✗ Backend is not reachable:', err);
       error = 'Backend server is not running. Please start the server on http://localhost:8080';
       return false;
     }
   }
 
+  /**
+   * Component lifecycle - test backend connection on mount
+   */
   onMount(async () => {
     await testBackendConnection();
   });
@@ -176,25 +189,25 @@
       {/if}
     </div>
 
-          {#if matches.length > 0}
-        <div class="display-controls">
-          <label class="toggle-label">
-            <input 
-              type="checkbox" 
-              bind:checked={showDuplicates}
-            />
-            <span class="toggle-slider"></span>
-            Show self-flow lines (same genome)
-          </label>
-          <div class="toggle-description">
-            {#if showDuplicates}
-              Showing self-flow lines within the same genome
-            {:else}
-              Showing only flow lines between different genomes
-            {/if}
-          </div>
+    {#if matches.length > 0}
+      <div class="display-controls">
+        <label class="toggle-label">
+          <input 
+            type="checkbox" 
+            bind:checked={showDuplicates}
+          />
+          <span class="toggle-slider"></span>
+          Show self-flow lines (same genome)
+        </label>
+        <div class="toggle-description">
+          {#if showDuplicates}
+            Showing self-flow lines within the same genome
+          {:else}
+            Showing only flow lines between different genomes
+          {/if}
         </div>
-      {/if}
+      </div>
+    {/if}
 
     {#if matches.length > 0}
       <DonutChart {files} {matches} {showDuplicates} />

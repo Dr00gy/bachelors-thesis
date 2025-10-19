@@ -5,11 +5,12 @@ use crossbeam::queue::SegQueue;
 use rayon::prelude::*;
 use std::sync::Arc;
 
+/// Represents a single XMAP record from parsed files
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XmapRecord {
     pub xmap_entry_id: u32,
     pub qry_contig_id: u32,
-    pub ref_contig_id: u8,  // chromosome 1-23
+    pub ref_contig_id: u8,
     pub qry_start_pos: f64,
     pub qry_end_pos: f64,
     pub ref_start_pos: f64,
@@ -19,6 +20,7 @@ pub struct XmapRecord {
     pub ref_len: f64,
 }
 
+/// Represents a match between multiple XMAP records
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XmapMatch {
     pub qry_contig_id: u32,
@@ -26,6 +28,7 @@ pub struct XmapMatch {
     pub records: Box<[MatchedRecord]>,
 }
 
+/// Represents an individual record within a match
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MatchedRecord {
     pub file_index: usize,
@@ -39,6 +42,16 @@ pub struct MatchedRecord {
     pub ref_len: f64,
 }
 
+/// Parses XMAP file content into structured records
+///
+/// # Arguments
+/// * `content` - Raw XMAP file content as string
+///
+/// # Returns
+/// * `Result<Arc<DashMap<u32, Arc<XmapRecord>>>, String>` - Parsed records or error
+///
+/// # Format
+/// Expects tab-separated values with specific column ordering
 pub fn parse_xmap_file(content: &str) -> Result<Arc<DashMap<u32, Arc<XmapRecord>>>, String> {
     let records = DashMap::new();
 
@@ -68,18 +81,16 @@ pub fn parse_xmap_file(content: &str) -> Result<Arc<DashMap<u32, Arc<XmapRecord>
             Ok(())
         })?;
 
-    // ALL RECORDS DEBUG
-    println!("=== Parsed Records ===");
-    for rec in records.iter() {
-        println!("Record XmapEntryID {}: {:?}", rec.key(), rec.value());
-    }
-    println!("Total records parsed: {}", records.len());
-
     Ok(Arc::new(records))
 }
 
-
-/// build index: QryContigID -> DashMap of XmapRecords
+/// Builds index mapping query contig IDs to their records
+///
+/// # Arguments
+/// * `records` - Parsed XMAP records
+///
+/// # Returns
+/// * `Arc<DashMap<u32, Arc<DashMap<u32, Arc<XmapRecord>>>>>` - Indexed records
 pub fn build_index(
     records: Arc<DashMap<u32, Arc<XmapRecord>>>
 ) -> Arc<DashMap<u32, Arc<DashMap<u32, Arc<XmapRecord>>>>> {
@@ -98,25 +109,20 @@ pub fn build_index(
         qry_map.insert(record.xmap_entry_id, Arc::clone(record));
     }
 
-    println!("=== Build Index Output ===");
-    for entry in index.iter() {
-        let qry_id = entry.key();
-        let inner_map = entry.value();
-        println!("QryContigID: {}", qry_id);
-        for inner_entry in inner_map.iter() {
-            println!("  XmapEntryID: {} -> {:?}", inner_entry.key(), inner_entry.value());
-        }
-    }
-
     index
 }
 
+/// Container for multiple XMAP files and their indices
 pub struct XmapFileSet {
     pub files: Box<[Arc<DashMap<u32, Arc<XmapRecord>>>]>,
     pub indices: Box<[Arc<DashMap<u32, Arc<DashMap<u32, Arc<XmapRecord>>>>>]>,
 }
 
 impl XmapFileSet {
+    /// Creates new XmapFileSet with built indices
+    ///
+    /// # Arguments
+    /// * `files` - Collection of parsed XMAP files
     pub fn new(files: Box<[Arc<DashMap<u32, Arc<XmapRecord>>>]>) -> Self {
         let indices: Box<[_]> = files
             .iter()
@@ -126,12 +132,25 @@ impl XmapFileSet {
         Self { files, indices }
     }
 
+    /// Returns number of files in the set
     pub fn len(&self) -> usize {
         self.files.len()
     }
 }
 
-/// compares all file pairs for matches by QryContigID
+/// Streams matches between all file pairs in the fileset
+///
+/// # Arguments
+/// * `fileset` - Set of XMAP files to compare
+///
+/// # Returns
+/// * `channel::Receiver<XmapMatch>` - Channel receiver for match results
+///
+/// # Process
+/// * Generates all file pair combinations
+/// * Groups records by query contig ID
+/// * Processes matches in parallel using rayon
+/// * Streams results via channel
 pub fn stream_matches_multi(
     fileset: Arc<XmapFileSet>,
 ) -> channel::Receiver<XmapMatch> {
@@ -141,7 +160,6 @@ pub fn stream_matches_multi(
         return rx;
     }
 
-    // gen all file pair combinations 2 compare
     let mut file_pairs = Vec::new();
     for i in 0..fileset.len() {
         for j in (i + 1)..fileset.len() {
@@ -150,7 +168,6 @@ pub fn stream_matches_multi(
     }
 
     for (file_i, file_j) in file_pairs {
-        // group records by QryContigID for BOTH files
         let qry_groups_i: Arc<DashMap<u32, Vec<Arc<XmapRecord>>>> = Arc::new(DashMap::new());
         let qry_groups_j: Arc<DashMap<u32, Vec<Arc<XmapRecord>>>> = Arc::new(DashMap::new());
 
@@ -170,7 +187,6 @@ pub fn stream_matches_multi(
                 .push(Arc::clone(record));
         }
 
-        // to chunks conversions for parallel
         let queue: Arc<SegQueue<Arc<Box<[(u32, Vec<Arc<XmapRecord>>)]>>>> = Arc::new(SegQueue::new());
         let chunk_size = 100;
         let mut temp_chunk = Vec::with_capacity(chunk_size);
@@ -201,13 +217,10 @@ pub fn stream_matches_multi(
                 s.spawn(move |_| {
                     while let Some(chunk) = queue.pop() {
                         for (qry_id, records_i) in chunk.iter() {
-                            // look up all matching records from file_j with same QryContigID
                             if let Some(records_j) = qry_groups_j.get(qry_id) {
-                                // a match that includes ALL occurrences from both files
                                 let mut matched_indices = Vec::new();
                                 let mut matched_records = Vec::new();
 
-                                // ALL records from file_i with this QryContigID
                                 for record_i in records_i {
                                     matched_indices.push(file_i);
                                     matched_records.push(MatchedRecord {
@@ -223,7 +236,6 @@ pub fn stream_matches_multi(
                                     });
                                 }
 
-                                // ALL records from file_j with this QryContigID
                                 for record_j in records_j.value() {
                                     matched_indices.push(file_j);
                                     matched_records.push(MatchedRecord {
@@ -239,7 +251,6 @@ pub fn stream_matches_multi(
                                     });
                                 }
 
-                                // emit the match with all occurrences
                                 let match_data = XmapMatch {
                                     qry_contig_id: *qry_id,
                                     file_indices: matched_indices.into_boxed_slice(),
@@ -257,7 +268,7 @@ pub fn stream_matches_multi(
     rx
 }
 
-/// cache manager
+/// Cache manager for XMAP parsing and matching results
 pub struct XmapCache {
     pub parsed_files: Arc<DashMap<u64, Arc<DashMap<u32, Arc<XmapRecord>>>>>,
     pub indices: Arc<DashMap<u64, Arc<DashMap<u32, Arc<DashMap<u32, Arc<XmapRecord>>>>>>>,
@@ -265,6 +276,7 @@ pub struct XmapCache {
 }
 
 impl XmapCache {
+    /// Creates new empty cache
     pub fn new() -> Self {
         Self {
             parsed_files: Arc::new(DashMap::new()),
@@ -273,6 +285,11 @@ impl XmapCache {
         }
     }
 
+    /// Gets parsed records from cache or parses new content
+    ///
+    /// # Arguments
+    /// * `hash` - Content hash for caching
+    /// * `content` - XMAP file content to parse
     pub fn get_or_parse(&self, hash: u64, content: &str) -> Result<Arc<DashMap<u32, Arc<XmapRecord>>>, String> {
         if let Some(cached) = self.parsed_files.get(&hash) {
             return Ok(Arc::clone(cached.value()));
@@ -283,6 +300,11 @@ impl XmapCache {
         Ok(records)
     }
 
+    /// Gets index from cache or builds new index
+    ///
+    /// # Arguments
+    /// * `hash` - Records hash for caching
+    /// * `records` - Records to index
     pub fn get_or_build_index(
         &self,
         hash: u64,
@@ -297,6 +319,11 @@ impl XmapCache {
         index
     }
 
+    /// Caches match result for future requests
+    ///
+    /// # Arguments
+    /// * `key` - Cache key (file hashes)
+    /// * `match_data` - Match result to cache
     pub fn cache_match(&self, key: Box<[u64]>, match_data: Arc<XmapMatch>) {
         let matches = self.match_cache
             .entry(key)
@@ -310,6 +337,13 @@ impl XmapCache {
     }
 }
 
+/// Generates hash for file content caching
+///
+/// # Arguments
+/// * `content` - String content to hash
+///
+/// # Returns
+/// * `u64` - Content hash
 pub fn hash_content(content: &str) -> u64 {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -408,12 +442,10 @@ mod tests {
         while let Ok(match_data) = rx.recv() {
             match_count += 1;
             assert_eq!(match_data.qry_contig_id, 100);
-            assert_eq!(match_data.file_indices.len(), 2); // each pair generates a match
+            assert_eq!(match_data.file_indices.len(), 2);
             assert_eq!(match_data.records.len(), 2);
         }
 
-        // we have 3 pairs: (0,1), (0,2), (1,2)
-        // 3 matches total
         assert_eq!(match_count, 3);
     }
 }

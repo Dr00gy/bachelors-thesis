@@ -1,10 +1,16 @@
 <script lang="ts">
+  /**
+   * Represents file metadata for visualization
+   */
   interface FileData {
     name: string;
     rows: number;
     color: string;
   }
 
+  /**
+   * Represents a single matched record position
+   */
   interface MatchedRecord {
     file_index: number;
     ref_contig_id: number;
@@ -17,35 +23,103 @@
     ref_len: number;
   }
 
+  /**
+   * Represents a complete backend match with multiple records
+   */
   interface BackendMatch {
     qry_contig_id: number;
     file_indices: number[];
     records: MatchedRecord[];
   }
 
+  /**
+   * Represents a donut chart segment
+   */
+  interface DonutSegment {
+    name: string;
+    rows: number;
+    color: string;
+    index: number;
+    genomeSize: number;
+    dashArray: string;
+    dashOffset: number;
+    percentage: string;
+    showLabel: boolean;
+    showChromosomes: boolean;
+    startAngle: number;
+    endAngle: number;
+    angleRange: number;
+  }
+
+  /**
+   * Represents a flow path between two points
+   */
+  interface FlowPath {
+    path: string;
+    p1: { x: number; y: number };
+    p2: { x: number; y: number };
+    fromOrientation: string;
+    toOrientation: string;
+    color: string;
+    opacity: number;
+    width: number;
+    fromChromosome: number;
+    toChromosome: number;
+    confidence: number;
+    fromFileIndex: number;
+    toFileIndex: number;
+    isSameGenome: boolean;
+    qryContigId: number;
+    fromRecord: MatchedRecord;
+    toRecord: MatchedRecord;
+  }
+
+  /**
+   * Represents chromosome division markers
+   */
+  interface ChromosomeDivision {
+    chromosome: number;
+    startAngle: number;
+    endAngle: number;
+    midAngle: number;
+  }
+
+  /**
+   * Component props
+   */
   export let files: FileData[] = [];
   export let matches: BackendMatch[] = [];
   export let showDuplicates = false;
 
-  // filters
+  /**
+   * Filter state
+   */
   let selectedQueryContigId = '';
   let selectedGenome1 = '';
   let selectedGenome2 = '';
   let selectedChromosome = '';
   let selectedGenomeForChromosome = '';
 
+  /**
+   * Visualization scaling
+   */
   let scale = 1.0;
   const baseRadius = 80;
   const baseStrokeWidth = 20;
 
+  /**
+   * Computed visualization properties
+   */
   $: radius = baseRadius * scale;
   $: strokeWidth = baseStrokeWidth * scale;
   $: centerX = 200;
   $: centerY = 200;
   $: circumference = 2 * Math.PI * (radius - strokeWidth / 2);
-  $: showChromosomes = scale >= 1.0;
+  $: showChromosomes = scale >= 1.2;
 
-  // max confidence for normalization
+  /**
+   * Calculates maximum confidence value for normalization
+   */
   $: maxConfidence = (() => {
     let max = 0;
     for (const match of matches) {
@@ -58,12 +132,14 @@
     return max || 1;
   })();
 
-  // stats per QueryContigID, will figure out efficiency later
+  /**
+   * Statistics per query contig ID
+   */
   $: queryContigStats = (() => {
     const stats = new Map<number, {
       totalOccurrences: number;
       genomeOccurrences: Map<number, number>;
-      chromosomeOccurrences: Map<string, number>; // key: "genomeIdx-chrNum"
+      chromosomeOccurrences: Map<string, number>;
       maxConfidence: number;
     }>();
 
@@ -84,11 +160,9 @@
       for (const record of match.records) {
         stat.totalOccurrences++;
         
-        // genome occurrences
         const genomeCount = stat.genomeOccurrences.get(record.file_index) || 0;
         stat.genomeOccurrences.set(record.file_index, genomeCount + 1);
         
-        // chromosome occurrences
         const chrKey = `${record.file_index}-${record.ref_contig_id}`;
         const chrCount = stat.chromosomeOccurrences.get(chrKey) || 0;
         stat.chromosomeOccurrences.set(chrKey, chrCount + 1);
@@ -102,23 +176,34 @@
     return stats;
   })();
 
+  /**
+   * Available query contig IDs from matches
+   */
   $: availableQueryContigIds = (() => {
     const ids = new Set<number>();
     matches.forEach(match => ids.add(match.qry_contig_id));
     return Array.from(ids).sort((a, b) => a - b);
   })();
 
+  /**
+   * Available genomes for filtering
+   */
   $: availableGenomes = files.map((file, index) => ({
     value: index.toString(),
     label: file.name,
     color: file.color
   }));
 
+  /**
+   * Available chromosomes (1-22 + X)
+   */
   $: availableChromosomes = Array.from({ length: 23 }, (_, i) => (i + 1).toString());
 
-  // sizes from RefLen field - sum all unique chromosomes per genome
+  /**
+   * Calculates genome sizes from RefLen fields
+   */
   $: genomeSizes = (() => {
-    const chromosomesByGenome = new Map<number, Map<number, number>>();    // unique chromosomes per genome: Map<fileIndex, Map<chromosome, refLen>>
+    const chromosomesByGenome = new Map<number, Map<number, number>>();
     
     for (const match of matches) {
       for (const record of match.records) {
@@ -131,34 +216,35 @@
         
         const chromosomes = chromosomesByGenome.get(fileIdx)!;
         
-        // storing the ref_len for this chromosome, first ref
         if (!chromosomes.has(chrNum)) {
           chromosomes.set(chrNum, record.ref_len);
         }
       }
     }
     
-    // sum unique chromosome lengths for each genome
     const sizes = new Map<number, number>();
     for (const [fileIdx, chromosomes] of chromosomesByGenome.entries()) {
       const totalSize = Array.from(chromosomes.values()).reduce((sum, len) => sum + len, 0);
       sizes.set(fileIdx, totalSize);
     }
     
-    // minimum sizes for display
     files.forEach((_, idx) => {
       if (!sizes.has(idx) || sizes.get(idx) === 0) {
         sizes.set(idx, 100000);
       }
     });
     
-    console.log('Genome sizes calculated:', Array.from(sizes.entries()));
-    
     return sizes;
   })();
 
+  /**
+   * Total genome size for percentage calculations
+   */
   $: totalGenomeSize = Array.from(genomeSizes.values()).reduce((sum, size) => sum + size, 0);
 
+  /**
+   * Donut chart segments with calculated positions
+   */
   $: segments = (() => {
     if (totalGenomeSize === 0) return [];
     
@@ -178,7 +264,7 @@
         dashOffset: -offset,
         percentage: (pct * 100).toFixed(1),
         showLabel: pct >= 0.01,
-        showChromosomes: true,
+        showChromosomes: pct >= 0.20,
         startAngle,
         endAngle,
         angleRange: endAngle - startAngle
@@ -188,7 +274,12 @@
     });
   })();
 
-  function getChromosomeDivisions(seg: typeof segments[0]) {
+  /**
+   * Gets chromosome divisions for a segment
+   * @param seg - Donut segment to divide
+   * @returns Array of chromosome divisions
+   */
+  function getChromosomeDivisions(seg: DonutSegment): ChromosomeDivision[] {
     const divisions = [];
     const segmentRange = seg.endAngle - seg.startAngle;
     
@@ -208,6 +299,13 @@
     return divisions;
   }
 
+  /**
+   * Gets angle for specific chromosome position
+   * @param fileIndex - File/genome index
+   * @param chromosome - Chromosome number
+   * @param position - Position in chromosome
+   * @returns Angle in degrees
+   */
   function getChromosomeAngle(fileIndex: number, chromosome: number, position: 'start' | 'mid' | 'end'): number {
     const seg = segments[fileIndex];
     if (!seg) return 0;
@@ -222,12 +320,27 @@
     return chrDiv.midAngle;
   }
 
+  /**
+   * Calculates position within chromosome as ratio
+   * @param refStartPos - Start position in reference
+   * @param refEndPos - End position in reference
+   * @param refLen - Chromosome length
+   * @returns Position ratio (0-1)
+   */
   function getPositionInChromosome(refStartPos: number, refEndPos: number, refLen: number): number {
     const avgPos = (refStartPos + refEndPos) / 2;
-    // ref_len as the chromosome length
     return Math.min(1, Math.max(0, avgPos / refLen));
   }
 
+  /**
+   * Gets angle for record within its chromosome
+   * @param fileIndex - File/genome index
+   * @param chromosome - Chromosome number
+   * @param refStartPos - Start position
+   * @param refEndPos - End position
+   * @param refLen - Chromosome length
+   * @returns Angle in degrees
+   */
   function getAngleInChromosome(
     fileIndex: number, 
     chromosome: number, 
@@ -235,13 +348,15 @@
     refEndPos: number,
     refLen: number
   ): number {
-    const chrStartAngle = getChromosomeAngle(fileIndex, chromosome, 'start');
-    const chrEndAngle = getChromosomeAngle(fileIndex, chromosome, 'end');
-    const positionPct = getPositionInChromosome(refStartPos, refEndPos, refLen);
-    
-    return chrStartAngle + (chrEndAngle - chrStartAngle) * positionPct;
+    return getChromosomeAngle(fileIndex, chromosome, 'mid');
   }
 
+  /**
+   * Calculates radial point coordinates
+   * @param angle - Angle in degrees
+   * @param radiusOffset - Radius offset from base
+   * @returns Point coordinates
+   */
   function getRadialPoint(angle: number, radiusOffset: number = 0) {
     const rad = (angle * Math.PI) / 180;
     const r = radius + radiusOffset;
@@ -251,24 +366,38 @@
     };
   }
 
+  /**
+   * Gets point on donut circumference
+   * @param angle - Angle in degrees
+   * @param radiusOffset - Radius offset
+   * @returns Point coordinates
+   */
   function getPointOnDonut(angle: number, radiusOffset: number = 0) {
     return getRadialPoint(angle, radiusOffset);
   }
 
+  /**
+   * Creates curved flow path between two points
+   * @param fromAngle - Starting angle
+   * @param toAngle - Ending angle
+   * @param intensity - Path intensity for styling
+   * @param fromOrientation - Starting orientation
+   * @param toOrientation - Ending orientation
+   * @returns Flow path data
+   */
   function createFlowPath(
     fromAngle: number, 
     toAngle: number, 
     intensity: number,
     fromOrientation: string,
     toOrientation: string
-  ) {
+  ): { path: string; p1: { x: number; y: number }; p2: { x: number; y: number }; fromOrientation: string; toOrientation: string } {
     const p1 = getPointOnDonut(fromAngle, -strokeWidth / 2);
     const p2 = getPointOnDonut(toAngle, -strokeWidth / 2);
     
-    // control point for curved path
     const midAngle = (fromAngle + toAngle) / 2;
     const angleDiff = Math.abs(toAngle - fromAngle);
-    const controlDist = radius * (0.5 + Math.min(angleDiff / 180, 1) * 0.5);
+    const controlDist = radius * (0.85 + Math.min(angleDiff / 180, 1) * 0.15);
     const cp = getPointOnDonut(midAngle, -controlDist);
 
     return {
@@ -280,22 +409,20 @@
     };
   }
 
+  /**
+   * Generated flow paths between all record pairs
+   */
   $: flowPaths = (() => {
-    const paths = [];
-    
-    console.log('Generating flow paths for', matches.length, 'matches');
-    console.log('Max confidence:', maxConfidence);
+    const paths: FlowPath[] = [];
     
     for (const match of matches) {
       if (match.records.length < 2) continue;
       
-      // flow lines between ALL pairs of records
       for (let i = 0; i < match.records.length; i++) {
         for (let j = i + 1; j < match.records.length; j++) {
           const fromRecord = match.records[i];
           const toRecord = match.records[j];
           
-          // file indices out of bounds?
           if (fromRecord.file_index >= files.length || toRecord.file_index >= files.length) {
             continue;
           }
@@ -316,11 +443,8 @@
             toRecord.ref_len
           );
           
-          // normalizes confidence to 0-1 range
           const avgConfidence = (fromRecord.confidence + toRecord.confidence) / 2;
           const normalizedConfidence = avgConfidence / maxConfidence;
-          
-          // op from 10% to 100% based on normalized confidence
           const opacity = 0.1 + (normalizedConfidence * 0.9);
           
           const flowData = createFlowPath(
@@ -350,14 +474,15 @@
       }
     }
     
-    console.log('Generated', paths.length, 'flow paths');
     return paths;
   })();
 
+  /**
+   * Flow paths filtered by current filter settings
+   */
   $: filteredFlowPaths = (() => {
     let filtered = flowPaths;
 
-    // self-flow/cross-genome filter first
     if (showDuplicates) {
       filtered = filtered.filter(path => path.isSameGenome);
     } else {
@@ -392,10 +517,12 @@
       );
     }
 
-    console.log('Filtered to', filtered.length, 'flow paths');
     return filtered;
   })();
 
+  /**
+   * Clears all active filters
+   */
   function clearAllFilters() {
     selectedQueryContigId = '';
     selectedGenome1 = '';
@@ -404,7 +531,14 @@
     selectedGenomeForChromosome = '';
   }
 
-  function getOrientationMarker(point: {x: number, y: number}, orientation: string, angle: number) {
+  /**
+   * Creates orientation marker SVG path
+   * @param point - Marker position
+   * @param orientation - Orientation symbol (+/-)
+   * @param angle - Angle for direction
+   * @returns SVG path string
+   */
+  function getOrientationMarker(point: {x: number, y: number}, orientation: string, angle: number): string {
     const markerSize = 6 * scale;
     const rad = (angle * Math.PI) / 180;
     
@@ -424,13 +558,13 @@
   <div class="chart-section">
     <div class="controls">
       <label for="scale-slider">
-        Size: {Math.round(scale * 100)}%
+        Size: {Math.round(((scale - 1.0) / 1.2) * 100)}%
       </label>
       <input
         id="scale-slider"
         type="range"
-        min="0.5"
-        max="2.5"
+        min="1.0"
+        max="2.2"
         step="0.1"
         bind:value={scale}
       />
@@ -444,7 +578,6 @@
 
     <div class="chart-scale-wrapper" style="transform: scale({scale}); transform-origin: top left;">
       <svg width="400" height="400" viewBox="0 0 400 400">
-        <!-- Flow lines -->
         <g class="flow-lines">
           {#each filteredFlowPaths as flow}
             <path
@@ -456,7 +589,6 @@
               stroke-linecap="round"
             />
             
-            <!-- Orientation markers -->
             <g class="orientation-markers">
               <path
                 d={getOrientationMarker(
@@ -485,7 +617,6 @@
           {/each}
         </g>
 
-        <!-- Donut segments -->
         <g class="donut-segments">
           {#each segments as seg}
             <circle
@@ -502,48 +633,47 @@
           {/each}
         </g>
 
-        <!-- Chromosome divisions -->
         {#if showChromosomes}
           <g class="chromosome-markers">
             {#each segments as seg}
-              {#each getChromosomeDivisions(seg) as chr}
-                <line
-                  x1={getRadialPoint(chr.startAngle, -strokeWidth/2).x}
-                  y1={getRadialPoint(chr.startAngle, -strokeWidth/2).y}
-                  x2={getRadialPoint(chr.startAngle, strokeWidth/2).x}
-                  y2={getRadialPoint(chr.startAngle, strokeWidth/2).y}
-                  stroke="white"
-                  stroke-width={1 * scale}
-                  opacity="0.7"
-                />
-                
-                {#if chr.chromosome % 2 === 1}
-                  <text
-                    x={getRadialPoint(chr.midAngle, 0).x}
-                    y={getRadialPoint(chr.midAngle, 0).y}
-                    text-anchor="middle"
-                    dominant-baseline="middle"
-                    font-size={7 * scale}
-                    font-weight="600"
-                    fill="white"
-                    opacity="0.9"
-                  >
-                    {chr.chromosome}
-                  </text>
-                {/if}
-              {/each}
+              {#if seg.showChromosomes}
+                {#each getChromosomeDivisions(seg) as chr}
+                  <line
+                    x1={getRadialPoint(chr.startAngle, -strokeWidth).x}
+                    y1={getRadialPoint(chr.startAngle, -strokeWidth).y}
+                    x2={getRadialPoint(chr.startAngle, 0).x}
+                    y2={getRadialPoint(chr.startAngle, 0).y}
+                    stroke="#666"
+                    stroke-width={1 * scale}
+                    opacity="0.7"
+                  />
+                  
+                  {#if chr.chromosome % 2 === 1}
+                    <text
+                      x={getRadialPoint(chr.midAngle, strokeWidth * 0.35).x}
+                      y={getRadialPoint(chr.midAngle, strokeWidth * 0.35).y}
+                      text-anchor="middle"
+                      dominant-baseline="middle"
+                      font-size={7 * scale}
+                      font-weight="600"
+                      fill="#666"
+                      opacity="0.9"
+                    >
+                      {chr.chromosome}
+                    </text>
+                  {/if}
+                {/each}
+              {/if}
             {/each}
           </g>
         {/if}
 
-        <!-- center pt -->
         <circle cx={centerX} cy={centerY} r={2} fill="#666" />
       </svg>
     </div>
   </div>
 
   <div class="info">
-    <!-- Overview Section -->
     {#if matches.length > 0}
       <div class="section overview-section">
         <h2>Query Contig Overview ({queryContigStats.size} unique)</h2>
@@ -591,12 +721,10 @@
       </div>
     {/if}
 
-    <!-- Filters Section -->
     <div class="section filters-section">
       <h2>Filters</h2>
       <div class="filters-grid">
         
-        <!-- Query Contig ID Filter -->
         <div class="filter-group">
           <label for="query-contig-filter">Query Contig ID:</label>
           <select id="query-contig-filter" bind:value={selectedQueryContigId}>
@@ -607,7 +735,6 @@
           </select>
         </div>
 
-        <!-- Genome Filter -->
         <div class="filter-group">
           <label for="genome1-filter">Genome 1:</label>
           <select id="genome1-filter" bind:value={selectedGenome1}>
@@ -618,7 +745,6 @@
           </select>
         </div>
 
-        <!-- Genome 2 Filter (for pairs) -->
         <div class="filter-group">
           <label for="genome2-filter">Genome 2 (optional):</label>
           <select id="genome2-filter" bind:value={selectedGenome2}>
@@ -629,7 +755,6 @@
           </select>
         </div>
 
-        <!-- Chromosome Filter -->
         <div class="filter-group">
           <label for="genome-chromosome-filter">Genome for Chromosome:</label>
           <select id="genome-chromosome-filter" bind:value={selectedGenomeForChromosome}>
@@ -656,6 +781,7 @@
           </button>
         </div>
       </div>
+
       {#if selectedQueryContigId || selectedGenome1 || selectedChromosome}
         <div class="active-filters">
           <h3>Active Filters:</h3>
@@ -724,7 +850,6 @@
       </div>
     {/if}
 
-    <!-- Debug stuff -->
     <div class="section debug-info">
       <h2>Debug Info</h2>
       <div class="debug-item">
@@ -827,7 +952,6 @@
     color: #374151;
   }
 
-  /* Overview Section */
   .overview-section {
     background: #f0f9ff;
     border-color: #bfdbfe;

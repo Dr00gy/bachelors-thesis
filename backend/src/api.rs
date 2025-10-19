@@ -13,6 +13,20 @@ use bytes::Bytes;
 
 use crate::xmap::{XmapCache, XmapFileSet, hash_content, stream_matches_multi};
 
+/// Streams XMAP matches for uploaded files
+///
+/// # Arguments
+/// * `cache` - Shared XmapCache instance
+/// * `multipart` - Multipart form data containing XMAP files
+///
+/// # Returns
+/// * `Result<Response<Body>, StatusCode>` - Streaming response or error status
+///
+/// # Process
+/// 1. Extracts 2-3 XMAP files from multipart form
+/// 2. Parses files and builds indices
+/// 3. Streams matches via duplex channel
+/// 4. Caches results for future requests
 pub async fn stream_xmap_matches(
     State(cache): State<Arc<XmapCache>>,
     mut multipart: Multipart,
@@ -43,7 +57,6 @@ pub async fn stream_xmap_matches(
     for (name, bytes) in files {
         let content_str = std::str::from_utf8(&bytes).map_err(|_| StatusCode::BAD_REQUEST)?;
         let hash = hash_content(content_str);
-        println!("File '{}' hash: {}", name, hash);
         file_hashes.push(hash);
 
         let bytes_arc = Arc::new(bytes);
@@ -59,11 +72,6 @@ pub async fn stream_xmap_matches(
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-        println!("Parsed {} records for file '{}'", records.len(), name);
-        for rec in records.iter() {
-            println!("  Record XmapEntryID {}: {:?}", rec.key(), rec.value());
-        }
-
         file_records.push(records);
     }
 
@@ -71,7 +79,6 @@ pub async fn stream_xmap_matches(
 
     for (idx, records) in file_records.into_iter().enumerate() {
         if idx == 0 {
-            // first file w/o index
             all_records_with_indices.push(records);
         } else {
             let hash = file_hashes[idx];
@@ -91,12 +98,8 @@ pub async fn stream_xmap_matches(
         all_records_with_indices.into_boxed_slice()
     ));
 
-    println!("Created XmapFileSet with {} files", fileset.len());
-
-    // streaming pipe
     let (mut writer, reader) = tokio::io::duplex(131072);
 
-    // spawn matching and streaming task
     let cache_key = file_hashes.into_boxed_slice();
     tokio::spawn(async move {
         let rx = stream_matches_multi(fileset);
