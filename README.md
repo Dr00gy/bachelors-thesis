@@ -13,4 +13,4 @@ To observe deviations of the studied genome from the reference genome, it is nec
 After cloning the repo, just run `docker-compose up --build` !
 
 ## Other
-For testing, I have included some files in the "files" folder.
+For testing, I have included some small .xmap files in the "files" folder.
