@@ -8,3 +8,9 @@ To observe deviations of the studied genome from the reference genome, it is nec
 1) Familiarize yourself with optical mapping technology.
 2) Design and implement optical mapping visualizations using the chosen technology.
 3) The proposed visualization will allow for comparison of mappings to different reference sequences.
+
+## Docker
+After cloning the repo, just run `docker-compose up --build` !
+
+## Other
+For testing, I have included some files in the "files" folder.
