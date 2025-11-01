@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { FileData, BackendMatch, DonutSegment } from './types';
+    import type { FileData, BackendMatch, DonutSegment, MatchedRecord } from './types';
 
     export let files: FileData[] = [];
     export let matches: BackendMatch[] = [];
@@ -172,31 +172,62 @@
     {/if}
   </div>
 
-  {#if matches.length > 0}
+    {#if matches.length > 0}
+    {@const mergedMatches = (() => {
+      const merged = new Map<number, Map<string, MatchedRecord>>();
+      for (const match of matches) {
+        const id = match.qry_contig_id;
+        if (!merged.has(id)) {
+          merged.set(id, new Map());
+        }
+        const recordMap = merged.get(id)!;
+
+        // deduplicated records from BE matches js for ts widget
+        for (const record of match.records) {
+          const key = `${record.file_index}-${record.ref_contig_id}-${record.orientation}-${record.confidence}`;
+          if (!recordMap.has(key)) {
+            recordMap.set(key, record);
+          }
+        }
+      }
+
+      return Array.from(merged.entries()).map(([id, recordMap]) => ({
+        qry_contig_id: id,
+        records: Array.from(recordMap.values()).sort((a, b) => {
+          if (a.file_index !== b.file_index) return a.file_index - b.file_index;
+          return a.ref_contig_id - b.ref_contig_id;
+        })
+      }));
+    })()}
+
     <div class="section">
-      <h2>Chromosome Matches ({matches.length})</h2>
+      <h2>Chromosome Matches ({mergedMatches.length} unique contigs)</h2>
       <div class="match-list">
-        {#each matches.slice(0, 20) as match}
+        {#each mergedMatches.slice(0, 20) as match}
           <div class="match-item">
-            <div class="match-detail">
+            <div class="match-header">
               <strong>QryContig {match.qry_contig_id}</strong>
-              <span class="confidence">({match.records[0]?.confidence.toFixed(1)})</span>
+              <span class="occurrence-count">{match.records.length} occurrence{match.records.length !== 1 ? 's' : ''}</span>
             </div>
-            <div class="match-chromosomes">
-              {#each match.records as record, i}
-                <span class="chr-badge" style="background: {files[record.file_index]?.color}20; color: {files[record.file_index]?.color}; border-color: {files[record.file_index]?.color}">
-                  File{record.file_index} Chr{record.ref_contig_id} ({record.orientation})
-                </span>
-                {#if i < match.records.length - 1}
-                  <span class="arrow">→</span>
-                {/if}
+            <div class="occurrence-list">
+              {#each match.records as record}
+                <div class="occurrence">
+                  <span class="chr-badge" style="background: {files[record.file_index]?.color}20; color: {files[record.file_index]?.color}; border-color: {files[record.file_index]?.color}">
+                    {files[record.file_index]?.name}
+                  </span>
+                  <span class="chr-info">Chr {record.ref_contig_id}</span>
+                  <span class="orientation-badge" class:plus={record.orientation === '+'} class:minus={record.orientation === '-'}>
+                    {record.orientation}
+                  </span>
+                  <span class="confidence-value">conf: {record.confidence.toFixed(2)}</span>
+                </div>
               {/each}
             </div>
           </div>
         {/each}
-        {#if matches.length > 20}
+        {#if mergedMatches.length > 20}
           <div class="more-matches">
-            +{matches.length - 20} more matches...
+            +{mergedMatches.length - 20} more query contigs...
           </div>
         {/if}
       </div>
@@ -477,29 +508,6 @@
     border: 1px solid var(--border-color);
   }
 
-  .match-detail {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    flex-wrap: wrap;
-  }
-
-  .confidence {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: normal;
-  }
-
-  .match-chromosomes {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
   .chr-badge {
     padding: 0.25rem 0.5rem;
     border-radius: 0.25rem;
@@ -509,17 +517,20 @@
     white-space: nowrap;
   }
 
-  .arrow {
-    color: var(--text-tertiary);
-    font-weight: bold;
-  }
-
   .more-matches {
     text-align: center;
     padding: 0.5rem;
     color: var(--text-secondary);
     font-size: 0.75rem;
     font-style: italic;
+  }
+
+  .occurrence {
+    margin-top: 0.8rem;
+  }
+
+  .occurrence-list {
+    margin-bottom: 0.5rem;
   }
 
   .debug-info {

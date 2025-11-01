@@ -522,7 +522,7 @@
                     y1={getRadialPoint(chr.startAngle, -strokeWidth).y}
                     x2={getRadialPoint(chr.startAngle, 0).x}
                     y2={getRadialPoint(chr.startAngle, 0).y}
-                    stroke="var(--text-secondary)"
+                    stroke="var(--text-primary)"
                     stroke-width={1 * scale}
                     opacity="0.7"
                   />
@@ -535,7 +535,7 @@
                       dominant-baseline="middle"
                       font-size={7 * scale}
                       font-weight="600"
-                      fill="var(--text-secondary)"
+                      fill="var(--text-primary)"
                       opacity="0.9"
                     >
                       {chr.chromosome}
