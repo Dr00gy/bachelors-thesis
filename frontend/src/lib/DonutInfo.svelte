@@ -212,7 +212,7 @@
             <div class="occurrence-list">
               {#each match.records as record}
                 <div class="occurrence">
-                  <span class="chr-badge" style="background: {files[record.file_index]?.color}20; color: {files[record.file_index]?.color}; border-color: {files[record.file_index]?.color}">
+                  <span class="file-badge" style="background: {files[record.file_index]?.color}20; color: {files[record.file_index]?.color}; border-color: {files[record.file_index]?.color}">
                     {files[record.file_index]?.name}
                   </span>
                   <span class="chr-info">Chr {record.ref_contig_id}</span>
@@ -508,8 +508,9 @@
     border: 1px solid var(--border-color);
   }
 
-  .chr-badge {
+  .file-badge {
     padding: 0.25rem 0.5rem;
+    margin-right: 0.5rem;
     border-radius: 0.25rem;
     font-size: 0.75rem;
     font-weight: 500;
@@ -526,7 +527,7 @@
   }
 
   .occurrence {
-    margin-top: 0.8rem;
+    margin-top: 1.0rem;
   }
 
   .occurrence-list {
@@ -579,7 +580,7 @@
     h2 { font-size: 0.9rem; }
     h3 { font-size: 0.85rem; }
     .genome-badge,
-    .chr-badge,
+    .file-badge,
     .filter-tag {
       font-size: 0.7rem;
     }
