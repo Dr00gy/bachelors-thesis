@@ -1,4 +1,5 @@
 <script lang="ts">
+  
   /**
    * Represents file metadata for visualization
    */
@@ -578,7 +579,7 @@ $: flowPaths = (() => {
     </div>
 
     <div class="chart-scale-wrapper" style="transform: scale({scale}); transform-origin: top left;">
-      <svg width="400" height="400" viewBox="0 0 400 400">
+      <svg class="chart-svg" width="400" height="400" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
         <g class="flow-lines">
           {#each filteredFlowPaths as flow}
             <path
@@ -879,6 +880,7 @@ $: flowPaths = (() => {
     display: flex;
     gap: 3rem;
     align-items: flex-start;
+    flex-wrap: wrap;            /* narrow win wrap */
   }
 
   .chart-section {
@@ -886,6 +888,7 @@ $: flowPaths = (() => {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    max-width: 100%;
   }
 
   .chart-scale-wrapper {
@@ -894,6 +897,15 @@ $: flowPaths = (() => {
     border-radius: 0.5rem;
     padding: 1rem;
     background: white;
+    max-width: 100%;
+    width: clamp(260px, 90vw, 420px);
+    box-sizing: border-box;
+  }
+
+  .chart-svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
   }
 
   .controls {
@@ -904,11 +916,11 @@ $: flowPaths = (() => {
   }
 
   .stats {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: #6b7280;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.25rem 0.75rem;
   }
 
   .confidence-stat {
@@ -918,26 +930,26 @@ $: flowPaths = (() => {
 
   .info {
     flex: 1;
-    min-width: 0;
+    min-width: 280px; /* avoid overflow w/ very small windows */
   }
 
   .section {
     margin-bottom: 1.5rem;
-    padding: 1rem;
+    padding: clamp(0.75rem, 1.5vw, 1rem);
     background: white;
     border-radius: 0.5rem;
     border: 1px solid #e5e7eb;
   }
 
   h2 {
-    font-size: 1rem;
+    font-size: clamp(0.95rem, 1.4vw, 1rem);
     font-weight: 600;
     margin-bottom: 0.75rem;
     color: #374151;
   }
 
   h3 {
-    font-size: 0.875rem;
+    font-size: clamp(0.85rem, 1.3vw, 0.95rem);
     font-weight: 600;
     margin-bottom: 0.5rem;
     color: #374151;
@@ -981,6 +993,7 @@ $: flowPaths = (() => {
     border-radius: 0.25rem;
     font-size: 0.7rem;
     font-weight: 600;
+    white-space: nowrap;
   }
 
   .overview-confidence {
@@ -990,6 +1003,7 @@ $: flowPaths = (() => {
     border-radius: 0.25rem;
     font-size: 0.7rem;
     font-weight: 600;
+    white-space: nowrap;
   }
 
   .genome-breakdown,
@@ -1017,6 +1031,7 @@ $: flowPaths = (() => {
     font-size: 0.7rem;
     font-weight: 600;
     border: 1px solid;
+    white-space: nowrap;
   }
 
   .chr-grid {
@@ -1063,8 +1078,10 @@ $: flowPaths = (() => {
     padding: 0.5rem;
     border: 1px solid #d1d5db;
     border-radius: 0.375rem;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     background: white;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .filter-group select:disabled {
@@ -1079,9 +1096,10 @@ $: flowPaths = (() => {
     color: white;
     border: none;
     border-radius: 0.375rem;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     cursor: pointer;
     margin-top: 1.25rem;
+    width: 100%;
   }
 
   .clear-filters-btn:hover {
@@ -1107,6 +1125,7 @@ $: flowPaths = (() => {
     border-radius: 0.25rem;
     font-size: 0.7rem;
     font-weight: 500;
+    white-space: nowrap;
   }
 
   .file-item {
@@ -1115,6 +1134,8 @@ $: flowPaths = (() => {
     gap: 0.5rem;
     margin-bottom: 0.5rem;
     font-size: 0.875rem;
+    flex-wrap: nowrap;
+    min-width: 0;
   }
 
   .color-box {
@@ -1126,17 +1147,26 @@ $: flowPaths = (() => {
 
   .file-name {
     font-weight: 500;
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .file-size {
+  .file-size,
+  .file-pct {
+    flex-shrink: 0;
     color: #6b7280;
     font-size: 0.75rem;
+    white-space: nowrap;
   }
+
 
   .file-pct {
     color: #6b7280;
     font-size: 0.75rem;
+    white-space: nowrap;
   }
 
   .match-list {
@@ -1145,7 +1175,7 @@ $: flowPaths = (() => {
   }
 
   .match-item {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     margin-bottom: 0.75rem;
     padding: 0.75rem;
     background: #f9fafb;
@@ -1160,10 +1190,11 @@ $: flowPaths = (() => {
     color: #374151;
     margin-bottom: 0.5rem;
     font-weight: 600;
+    flex-wrap: wrap;
   }
 
   .confidence {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: #6b7280;
     font-weight: normal;
   }
@@ -1178,9 +1209,10 @@ $: flowPaths = (() => {
   .chr-badge {
     padding: 0.25rem 0.5rem;
     border-radius: 0.25rem;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 500;
     border: 1px solid;
+    white-space: nowrap;
   }
 
   .arrow {
@@ -1206,4 +1238,87 @@ $: flowPaths = (() => {
     margin-bottom: 0.25rem;
     color: #7c2d12;
   }
+
+  /* --- Responsivity --- */
+  @media (max-width: 1024px) {
+    .container {
+      gap: 2rem;
+    }
+    .stats {
+      grid-template-columns: 1fr; /* stack */
+    }
+    .overview-list {
+      max-height: 420px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .container {
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .filters-grid {
+      grid-template-columns: 1fr; /* collapse to column */
+    }
+    .file-item {
+      grid-template-columns: auto 1fr;
+      grid-auto-rows: auto;
+      row-gap: 0.25rem;
+    }
+    .file-size,
+    .file-pct {
+      grid-column: 2 / -1;
+    }
+    .match-list {
+      max-height: 360px;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .section {
+      padding: 0.75rem;
+    }
+    .chart-scale-wrapper {
+      width: 100%;
+      padding: 0.75rem;
+    }
+    h2 { font-size: 0.9rem; }
+    h3 { font-size: 0.85rem; }
+    .genome-badge,
+    .chr-badge,
+    .filter-tag {
+      font-size: 0.7rem;
+    }
+    .overview-header strong {
+      font-size: 0.8rem;
+    }
+    .overview-list {
+      max-height: 320px;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .overview-total,
+    .overview-confidence {
+      font-size: 0.65rem;
+      padding: 0.2rem 0.4rem;
+    }
+    .filter-group select {
+      font-size: 0.75rem;
+      padding: 0.45rem;
+    }
+    .clear-filters-btn {
+      font-size: 0.75rem;
+    }
+  }
+
+  @media (max-width: 300px) {
+  .file-item {
+    flex-wrap: wrap;             /* prevent early wrap */
+    gap: 0.25rem 0.5rem;
+  }
+  .file-name {
+    flex: 1 1 100%;
+  }
+}
 </style>
