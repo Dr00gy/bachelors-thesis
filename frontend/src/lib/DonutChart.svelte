@@ -194,8 +194,6 @@
 
   /**
    * Gets chromosome divisions for a segment
-   * @param seg - Donut segment to divide
-   * @returns Array of chromosome divisions
    */
   function getChromosomeDivisions(seg: DonutSegment): ChromosomeDivision[] {
     const divisions = [];
@@ -219,10 +217,6 @@
 
   /**
    * Gets angle for specific chromosome position
-   * @param fileIndex - File/genome index
-   * @param chromosome - Chromosome number
-   * @param position - Position in chromosome
-   * @returns Angle in degrees
    */
   function getChromosomeAngle(fileIndex: number, chromosome: number, position: 'start' | 'mid' | 'end'): number {
     const seg = segments[fileIndex];
@@ -239,25 +233,7 @@
   }
 
   /**
-   * Calculates position within chromosome as ratio
-   * @param refStartPos - Start position in reference
-   * @param refEndPos - End position in reference
-   * @param refLen - Chromosome length
-   * @returns Position ratio (0-1)
-   */
-  function getPositionInChromosome(refStartPos: number, refEndPos: number, refLen: number): number {
-    const avgPos = (refStartPos + refEndPos) / 2;
-    return Math.min(1, Math.max(0, avgPos / refLen));
-  }
-
-  /**
    * Gets angle for record within its chromosome
-   * @param fileIndex - File/genome index
-   * @param chromosome - Chromosome number
-   * @param refStartPos - Start position
-   * @param refEndPos - End position
-   * @param refLen - Chromosome length
-   * @returns Angle in degrees
    */
   function getAngleInChromosome(
     fileIndex: number, 
@@ -271,9 +247,6 @@
 
   /**
    * Calculates radial point coordinates
-   * @param angle - Angle in degrees
-   * @param radiusOffset - Radius offset from base
-   * @returns Point coordinates
    */
   function getRadialPoint(angle: number, radiusOffset: number = 0) {
     const rad = (angle * Math.PI) / 180;
@@ -286,9 +259,6 @@
 
   /**
    * Gets point on donut circumference
-   * @param angle - Angle in degrees
-   * @param radiusOffset - Radius offset
-   * @returns Point coordinates
    */
   function getPointOnDonut(angle: number, radiusOffset: number = 0) {
     return getRadialPoint(angle, radiusOffset);
@@ -296,12 +266,6 @@
 
   /**
    * Creates curved flow path between two points
-   * @param fromAngle - Starting angle
-   * @param toAngle - Ending angle
-   * @param intensity - Path intensity for styling
-   * @param fromOrientation - Starting orientation
-   * @param toOrientation - Ending orientation
-   * @returns Flow path data
    */
   function createFlowPath(
     fromAngle: number, 
@@ -330,7 +294,7 @@
   /**
    * Generated flow paths between all record pairs
    */
-$: flowPaths = (() => {
+  $: flowPaths = (() => {
     const paths: FlowPath[] = [];
     const drawnSelfFlowPaths = new Set<string>();
     
@@ -463,10 +427,6 @@ $: flowPaths = (() => {
 
   /**
    * Creates orientation marker SVG path
-   * @param point - Marker position
-   * @param orientation - Orientation symbol (+/-)
-   * @param angle - Angle for direction
-   * @returns SVG path string
    */
   function getOrientationMarker(point: {x: number, y: number}, orientation: string, angle: number): string {
     const markerSize = 6 * scale;
@@ -562,7 +522,7 @@ $: flowPaths = (() => {
                     y1={getRadialPoint(chr.startAngle, -strokeWidth).y}
                     x2={getRadialPoint(chr.startAngle, 0).x}
                     y2={getRadialPoint(chr.startAngle, 0).y}
-                    stroke="#666"
+                    stroke="var(--text-secondary)"
                     stroke-width={1 * scale}
                     opacity="0.7"
                   />
@@ -575,7 +535,7 @@ $: flowPaths = (() => {
                       dominant-baseline="middle"
                       font-size={7 * scale}
                       font-weight="600"
-                      fill="#666"
+                      fill="var(--text-secondary)"
                       opacity="0.9"
                     >
                       {chr.chromosome}
@@ -587,7 +547,7 @@ $: flowPaths = (() => {
           </g>
         {/if}
 
-        <circle cx={centerX} cy={centerY} r={2} fill="#666" />
+        <circle cx={centerX} cy={centerY} r={2} fill="var(--text-secondary)" />
       </svg>
     </div>
   </div>
@@ -631,10 +591,10 @@ $: flowPaths = (() => {
 
   .chart-scale-wrapper {
     display: inline-block;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-color);
     border-radius: 0.5rem;
     padding: 1rem;
-    background: white;
+    background: var(--bg-secondary);
     max-width: 100%;
     width: clamp(260px, 90vw, 420px);
     box-sizing: border-box;
@@ -655,7 +615,7 @@ $: flowPaths = (() => {
 
   .stats {
     font-size: 0.8rem;
-    color: #6b7280;
+    color: var(--text-secondary);
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.25rem 0.75rem;
@@ -663,7 +623,7 @@ $: flowPaths = (() => {
 
   .confidence-stat {
     font-weight: 600;
-    color: #3b82f6;
+    color: var(--accent-primary);
   }
 
   @media (max-width: 1024px) {

@@ -6,7 +6,9 @@
   import DisplayControls from '$lib/DisplayControls.svelte';
   import LoadingSpinner from '$lib/LoadingSpinner.svelte';
   import TabNav from '$lib/TabNav.svelte';
+  import DarkModeToggle from '$lib/DarkModeToggle.svelte';
   import { fetchMatches, type BackendMatch } from '$lib/bincodeDecoder';
+  import { darkMode } from '$lib/darkModeStore';
 
   /**
    * Represents file metadata for the application
@@ -30,6 +32,13 @@
   let activeTab: 'visualization' | 'analysis' = 'visualization';
   let hasUploadedFiles = false;
   let scale = 1.0;
+
+  /**
+   * Initialize dark mode on mount
+   */
+  onMount(() => {
+    document.documentElement.classList.toggle('dark', $darkMode);
+  });
 
   /**
    * Handles file upload and match processing
@@ -129,41 +138,23 @@
       abortController.abort();
     }
   }
-
-  /**
-   * Tests backend server connectivity
-   * @returns Promise resolving to connection status
-   */
-  async function testBackendConnection(): Promise<boolean> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-      const response = await fetch('http://localhost:8080/', {
-        method: 'HEAD',
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      return response.ok;
-    } catch {
-      return false;
-    }
-  }
 </script>
 
 <main class="page">
   <div class="header">
     <h1>Chromosome Flow Visualization</h1>
-    {#if hasUploadedFiles && !isLoading}
-      <button class="reset-button" on:click={resetUpload}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M2 8a6 6 0 0 1 10.5-4M14 8a6 6 0 0 1-10.5 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          <path d="M12.5 2v4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Reupload Files
-      </button>
-    {/if}
+    <div class="header-actions">
+      <DarkModeToggle />
+      {#if hasUploadedFiles && !isLoading}
+        <button class="reset-button" on:click={resetUpload}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M2 8a6 6 0 0 1 10.5-4M14 8a6 6 0 0 1-10.5 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M12.5 2v4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Reupload Files
+        </button>
+      {/if}
+    </div>
   </div>
 
   <TabNav bind:activeTab />
@@ -209,10 +200,57 @@
 </main>
 
 <style>
+  :global(:root) {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb;
+    --bg-hover: #f3f4f6;
+    --bg-accent: #f0f9ff;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --text-tertiary: #9ca3af;
+    --border-color: #e5e7eb;
+    --border-color-dark: #d1d5db;
+    --accent-primary: #3b82f6;
+    --accent-hover: #2563eb;
+    --accent-light: #dbeafe;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --error-bg: #fef2f2;
+    --error-border: #fecaca;
+  }
+
+  :global(.dark) {
+    --bg-primary: #0f1419;
+    --bg-secondary: #1a1f2e;
+    --bg-hover: #242b3d;
+    --bg-accent: #1e2b3f;
+    --text-primary: #e8edf4;
+    --text-secondary: #b1bfd0;
+    --text-tertiary: #8f9db2;
+    --border-color: #2d3748;
+    --border-color-dark: rgb(50, 60, 80);
+    --accent-primary: #5295e7;
+    --accent-hover: #3b82f6;
+    --accent-light: #1e3a5f;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --error: #f87171;
+    --error-bg: #2d1f1f;
+    --error-border: #4a2020;
+  }
+
+  :global(body) {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.2s, color 0.2s;
+  }
+
   .page {
     padding: 2rem;
     max-width: 1400px;
     margin: 0 auto;
+    background: var(--bg-primary);
   }
 
   .header {
@@ -222,8 +260,15 @@
     margin-bottom: 2rem;
   }
 
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
   h1 {
     margin: 0;
+    color: var(--text-primary);
   }
 
   .reset-button {
@@ -231,9 +276,9 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.625rem 1.25rem;
-    background: white;
-    color: #3b82f6;
-    border: 2px solid #3b82f6;
+    background: var(--bg-primary);
+    color: var(--accent-primary);
+    border: 2px solid var(--accent-primary);
     border-radius: 0.5rem;
     font-weight: 500;
     cursor: pointer;
@@ -242,8 +287,8 @@
   }
 
   .reset-button:hover {
-    background: #3b82f6;
-    color: white;
+    background: var(--accent-primary);
+    color: var(--bg-primary);
   }
 
   .tab-content {
@@ -267,19 +312,19 @@
     align-items: center;
     gap: 1rem;
     padding: 4rem;
-    background: white;
+    background: var(--bg-secondary);
     border-radius: 0.5rem;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-color);
   }
 
   .loading-text {
-    color: #6b7280;
+    color: var(--text-secondary);
     font-weight: 500;
   }
 
   .cancel-button {
     padding: 0.5rem 1.5rem;
-    background: #ef4444;
+    background: var(--error);
     color: white;
     border: none;
     border-radius: 0.5rem;
@@ -295,26 +340,27 @@
   .placeholder-tab {
     text-align: center;
     padding: 4rem;
-    background: white;
+    background: var(--bg-secondary);
     border-radius: 0.5rem;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-color);
   }
 
   .placeholder-tab h2 {
-    color: #374151;
+    color: var(--text-primary);
     margin-bottom: 1rem;
   }
 
   .placeholder-tab p {
-    color: #6b7280;
+    color: var(--text-secondary);
     margin-bottom: 0.5rem;
   }
 
   .data-status {
     margin-top: 2rem;
     padding: 1rem;
-    background: #f0f9ff;
+    background: var(--bg-accent);
     border-radius: 0.375rem;
     font-weight: 500;
+    color: var(--text-primary);
   }
 </style>

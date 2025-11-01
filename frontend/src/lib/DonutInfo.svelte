@@ -234,28 +234,28 @@
   .section {
     margin-bottom: 1.5rem;
     padding: clamp(0.75rem, 1.5vw, 1rem);
-    background: white;
+    background: var(--bg-secondary);
     border-radius: 0.5rem;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-color);
   }
 
   h2 {
     font-size: clamp(0.95rem, 1.4vw, 1rem);
     font-weight: 600;
     margin-bottom: 0.75rem;
-    color: #374151;
+    color: var(--text-primary);
   }
 
   h3 {
     font-size: clamp(0.85rem, 1.3vw, 0.95rem);
     font-weight: 600;
     margin-bottom: 0.5rem;
-    color: #374151;
+    color: var(--text-primary);
   }
 
   .overview-section {
-    background: white;
-    border-color: #e2e8f0;
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
   }
 
   .overview-list {
@@ -266,9 +266,9 @@
   .overview-item {
     margin-bottom: 1rem;
     padding: 1rem;
-    background: white;
+    background: var(--bg-primary);
     border-radius: 0.5rem;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-color);
   }
 
   .overview-header {
@@ -280,14 +280,14 @@
   }
 
   .overview-header strong {
-    color: #1e40af;
+    color: var(--accent-primary);
     font-size: 0.875rem;
   }
 
   .overview-total {
     padding: 0.25rem 0.5rem;
-    background: #dbeafe;
-    color: #1e40af;
+    background: var(--accent-light);
+    color: var(--accent-primary);
     border-radius: 0.25rem;
     font-size: 0.7rem;
     font-weight: 600;
@@ -296,8 +296,8 @@
 
   .overview-confidence {
     padding: 0.25rem 0.5rem;
-    background: #dcfce7;
-    color: #166534;
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
     border-radius: 0.25rem;
     font-size: 0.7rem;
     font-weight: 600;
@@ -312,7 +312,7 @@
 
   .breakdown-label {
     font-weight: 500;
-    color: #6b7280;
+    color: var(--text-secondary);
     margin-bottom: 0.25rem;
   }
 
@@ -349,8 +349,8 @@
   }
 
   .filters-section {
-    background: #f8fafc;
-    border-color: #e2e8f0;
+    background: var(--bg-accent);
+    border-color: var(--border-color);
   }
 
   .filters-grid {
@@ -369,28 +369,29 @@
   .filter-group label {
     font-size: 0.75rem;
     font-weight: 500;
-    color: #374151;
+    color: var(--text-primary);
   }
 
   .filter-group select {
     padding: 0.5rem;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-color-dark);
     border-radius: 0.375rem;
     font-size: 0.8rem;
-    background: white;
+    background: var(--bg-primary);
+    color: var(--text-primary);
     width: 100%;
     box-sizing: border-box;
   }
 
   .filter-group select:disabled {
-    background: #f3f4f6;
-    color: #9ca3af;
+    background: var(--bg-hover);
+    color: var(--text-tertiary);
     cursor: not-allowed;
   }
 
   .clear-filters-btn {
     padding: 0.5rem 1rem;
-    background: #3b82f6;
+    background: var(--accent-primary);
     color: white;
     border: none;
     border-radius: 0.375rem;
@@ -398,16 +399,17 @@
     cursor: pointer;
     margin-top: 1.25rem;
     width: 100%;
+    transition: background 0.2s;
   }
 
   .clear-filters-btn:hover {
-    background: #4b5563;
+    background: var(--accent-hover);
   }
 
   .active-filters {
     margin-top: 1rem;
     padding-top: 1rem;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid var(--border-color);
   }
 
   .filter-tags {
@@ -418,7 +420,7 @@
 
   .filter-tag {
     padding: 0.25rem 0.5rem;
-    background: #3b82f6;
+    background: var(--accent-primary);
     color: white;
     border-radius: 0.25rem;
     font-size: 0.7rem;
@@ -445,6 +447,7 @@
 
   .file-name {
     font-weight: 500;
+    color: var(--text-primary);
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
@@ -455,7 +458,7 @@
   .file-size,
   .file-pct {
     flex-shrink: 0;
-    color: #6b7280;
+    color: var(--text-secondary);
     font-size: 0.75rem;
     white-space: nowrap;
   }
@@ -469,16 +472,16 @@
     font-size: 0.8rem;
     margin-bottom: 0.75rem;
     padding: 0.75rem;
-    background: #f9fafb;
+    background: var(--bg-primary);
     border-radius: 0.5rem;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-color);
   }
 
   .match-detail {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #374151;
+    color: var(--text-primary);
     margin-bottom: 0.5rem;
     font-weight: 600;
     flex-wrap: wrap;
@@ -486,7 +489,7 @@
 
   .confidence {
     font-size: 0.75rem;
-    color: #6b7280;
+    color: var(--text-secondary);
     font-weight: normal;
   }
 
@@ -507,27 +510,31 @@
   }
 
   .arrow {
-    color: #9ca3af;
+    color: var(--text-tertiary);
     font-weight: bold;
   }
 
   .more-matches {
     text-align: center;
     padding: 0.5rem;
-    color: #6b7280;
+    color: var(--text-secondary);
     font-size: 0.75rem;
     font-style: italic;
   }
 
   .debug-info {
-    background: #fef3f3;
-    border-color: #fecaca;
+    background: var(--error-bg);
+    border-color: var(--error-border);
   }
 
   .debug-item {
     font-size: 0.75rem;
     margin-bottom: 0.25rem;
-    color: #7c2d12;
+    color: var(--text-primary);
+  }
+
+  .debug-item strong {
+    color: var(--text-primary);
   }
 
   @media (max-width: 1024px) {

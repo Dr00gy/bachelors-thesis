@@ -48,7 +48,7 @@
 <style>
   .tab-container {
     margin-bottom: 2rem;
-    border-bottom: 2px solid #e5e7eb;
+    border-bottom: 2px solid var(--border-color);
   }
 
   .tabs {
@@ -64,7 +64,7 @@
     background: transparent;
     border: none;
     border-bottom: 3px solid transparent;
-    color: #6b7280;
+    color: var(--text-secondary);
     font-weight: 500;
     font-size: 0.875rem;
     cursor: pointer;
@@ -74,13 +74,13 @@
   }
 
   .tab:hover {
-    color: #374151;
-    background: #f9fafb;
+    color: var(--text-primary);
+    background: var(--bg-hover);
   }
 
   .tab.active {
-    color: #3b82f6;
-    border-bottom-color: #3b82f6;
+    color: var(--accent-primary);
+    border-bottom-color: var(--accent-primary);
     background: transparent;
   }
 

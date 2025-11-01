@@ -121,9 +121,9 @@
   .upload-area {
     position: relative;
     padding: 4rem 2rem;
-    background: #f9fafb;
+    background: var(--bg-secondary);
     border-radius: 0.75rem;
-    border: 3px dashed #d1d5db;
+    border: 3px dashed var(--border-color-dark);
     cursor: pointer;
     transition: all 0.3s ease;
     min-height: 300px;
@@ -133,19 +133,19 @@
   }
 
   .upload-area:hover {
-    border-color: #3b82f6;
-    background: #f0f9ff;
+    border-color: var(--accent-primary);
+    background: var(--bg-accent);
   }
 
   .upload-area.dragging {
-    border-color: #3b82f6;
-    background: #dbeafe;
+    border-color: var(--accent-primary);
+    background: var(--accent-light);
     border-style: solid;
     transform: scale(1.02);
   }
 
   .upload-area:focus {
-    outline: 2px solid #3b82f6;
+    outline: 2px solid var(--accent-primary);
     outline-offset: 2px;
   }
 
@@ -158,38 +158,38 @@
   }
 
   .upload-icon {
-    color: #9ca3af;
+    color: var(--text-tertiary);
     transition: all 0.3s ease;
   }
 
   .upload-area:hover .upload-icon,
   .upload-area.dragging .upload-icon {
-    color: #3b82f6;
+    color: var(--accent-primary);
   }
 
   h3 {
     margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
-    color: #374151;
+    color: var(--text-primary);
   }
 
   .upload-hint {
     margin: 0;
     font-size: 0.875rem;
-    color: #6b7280;
+    color: var(--text-secondary);
   }
 
   .upload-requirement {
     margin: 0;
     font-size: 0.75rem;
-    color: #9ca3af;
+    color: var(--text-tertiary);
   }
 
   .upload-button {
     margin-top: 0.5rem;
     padding: 0.75rem 2rem;
-    background: #3b82f6;
+    background: var(--accent-primary);
     color: white;
     border: none;
     border-radius: 0.5rem;
@@ -202,7 +202,7 @@
   }
 
   .upload-button:hover {
-    background: #2563eb;
+    background: var(--accent-hover);
     transform: translateY(-1px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }

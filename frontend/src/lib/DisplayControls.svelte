@@ -45,7 +45,7 @@
   .scale-control label {
     font-size: 0.875rem;
     font-weight: 500;
-    color: #374151;
+    color: var(--text-primary);
   }
   
   .scale-slider {
@@ -59,7 +59,7 @@
     gap: 0.5rem;
     cursor: pointer;
     font-weight: 400;
-    color: #6b7280;
+    color: var(--text-secondary);
     font-size: 0.875rem;
   }
   
@@ -70,7 +70,7 @@
   .toggle-slider {
     width: 2.25rem;
     height: 1.125rem;
-    background: #d1d5db;
+    background: var(--border-color-dark);
     border-radius: 1rem;
     position: relative;
     transition: background 0.2s;
@@ -82,7 +82,7 @@
     position: absolute;
     width: 0.875rem;
     height: 0.875rem;
-    background: white;
+    background: var(--bg-primary);
     border-radius: 50%;
     top: 0.125rem;
     left: 0.125rem;
@@ -91,11 +91,11 @@
   }
   
   .toggle-label input:checked + .toggle-slider { 
-    background: #3b82f6; 
+    background: var(--accent-primary); 
   }
   
   .toggle-label input:checked + .toggle-slider::before { 
     transform: translateX(1.125rem);
-    background: #dbeafe;
+    background: var(--accent-light);
   }
 </style>
