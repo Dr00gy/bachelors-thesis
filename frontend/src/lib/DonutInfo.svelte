@@ -1,0 +1,600 @@
+<script lang="ts">
+    import type { FileData, BackendMatch, DonutSegment } from './types';
+
+    export let files: FileData[] = [];
+    export let matches: BackendMatch[] = [];
+    export let segments: DonutSegment[] = [];
+    export let genomeSizes: Map<number, number> = new Map();
+    export let totalGenomeSize = 0;
+    export let filteredFlowPaths: any[] = [];
+    export let showDuplicates = false;
+    export let selectedQueryContigId = '';
+    export let selectedGenome1 = '';
+    export let selectedGenome2 = '';
+    export let selectedChromosome = '';
+    export let selectedGenomeForChromosome = '';
+    export let availableQueryContigIds: number[] = [];
+    export let availableGenomes: { value: string; label: string; color: string }[] = [];
+    export let availableChromosomes: string[] = [];
+    export let queryContigStats: Map<number, {
+        totalOccurrences: number;
+        genomeOccurrences: Map<number, number>;
+        chromosomeOccurrences: Map<string, number>;
+        maxConfidence: number;
+    }> = new Map();
+
+    export let clearAllFilters: () => void = () => {};
+</script>
+
+<div class="info">
+  <div class="section">
+    <h2>Genomes ({files.length})</h2>
+    {#each files as file, idx}
+      <div class="file-item">
+        <div class="color-box" style="background: {file.color}"></div>
+        <span class="file-name">{file.name}</span>
+        <span class="file-size">{(genomeSizes.get(idx) || 0).toLocaleString()} bp</span>
+        <span class="file-pct">({segments[idx]?.percentage}%)</span>
+      </div>
+    {/each}
+  </div>
+
+  {#if matches.length > 0}
+    <div class="section overview-section">
+      <h2>Query Contig Overview ({queryContigStats.size} unique)</h2>
+      <div class="overview-list">
+        {#each Array.from(queryContigStats.entries()).sort((a, b) => b[1].totalOccurrences - a[1].totalOccurrences).slice(0, 10) as [qryId, stat]}
+          <div class="overview-item">
+            <div class="overview-header">
+              <strong>QryContig {qryId}</strong>
+              <span class="overview-total">{stat.totalOccurrences} total occurrences</span>
+              <span class="overview-confidence">Max conf: {stat.maxConfidence.toFixed(2)}</span>
+            </div>
+            
+            <div class="genome-breakdown">
+              <div class="breakdown-label">Per genome:</div>
+              {#each Array.from(stat.genomeOccurrences.entries()) as [genomeIdx, count]}
+                <span class="genome-badge" style="background: {files[genomeIdx]?.color}20; color: {files[genomeIdx]?.color}; border-color: {files[genomeIdx]?.color}">
+                  {files[genomeIdx]?.name}: {count}x
+                </span>
+              {/each}
+            </div>
+            
+            <div class="chromosome-breakdown">
+              <div class="breakdown-label">Per chromosome:</div>
+              <div class="chr-grid">
+                {#each Array.from(stat.chromosomeOccurrences.entries()).sort((a, b) => {
+                  const [aGenome, aChr] = a[0].split('-').map(Number);
+                  const [bGenome, bChr] = b[0].split('-').map(Number);
+                  return aGenome !== bGenome ? aGenome - bGenome : aChr - bChr;
+                }) as [chrKey, count]}
+                  {@const [genomeIdx, chrNum] = chrKey.split('-').map(Number)}
+                  <span class="chr-mini-badge" style="background: {files[genomeIdx]?.color}20; color: {files[genomeIdx]?.color}; border-color: {files[genomeIdx]?.color}">
+                    G{genomeIdx} Chr{chrNum}: {count}
+                  </span>
+                {/each}
+              </div>
+            </div>
+          </div>
+        {/each}
+        {#if queryContigStats.size > 10}
+          <div class="more-matches">
+            +{queryContigStats.size - 10} more query contigs...
+          </div>
+        {/if}
+      </div>
+    </div>
+  {/if}
+
+  <div class="section filters-section">
+    <h2>Filters</h2>
+    <div class="filters-grid">
+      
+      <div class="filter-group">
+        <label for="query-contig-filter">Query Contig ID:</label>
+        <select id="query-contig-filter" bind:value={selectedQueryContigId}>
+          <option value="">All Query Contigs</option>
+          {#each availableQueryContigIds as id}
+            <option value={id}>QryContig {id}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="genome1-filter">Genome 1:</label>
+        <select id="genome1-filter" bind:value={selectedGenome1}>
+          <option value="">All Genomes</option>
+          {#each availableGenomes as genome}
+            <option value={genome.value}>{genome.label}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="genome2-filter">Genome 2 (optional):</label>
+        <select id="genome2-filter" bind:value={selectedGenome2}>
+          <option value="">Any Genome</option>
+          {#each availableGenomes as genome}
+            <option value={genome.value}>{genome.label}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="genome-chromosome-filter">Genome for Chromosome:</label>
+        <select id="genome-chromosome-filter" bind:value={selectedGenomeForChromosome}>
+          <option value="">Select Genome</option>
+          {#each availableGenomes as genome}
+            <option value={genome.value}>{genome.label}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="chromosome-filter">Chromosome:</label>
+        <select id="chromosome-filter" bind:value={selectedChromosome} disabled={!selectedGenomeForChromosome}>
+          <option value="">All Chromosomes</option>
+          {#each availableChromosomes as chr}
+            <option value={chr}>Chr {chr}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <button on:click={clearAllFilters} class="clear-filters-btn">
+          Clear All Filters
+        </button>
+      </div>
+    </div>
+
+    {#if selectedQueryContigId || selectedGenome1 || selectedChromosome}
+      <div class="active-filters">
+        <h3>Active Filters:</h3>
+        <div class="filter-tags">
+          {#if selectedQueryContigId}
+            <span class="filter-tag">Query Contig: {selectedQueryContigId}</span>
+          {/if}
+          {#if selectedGenome1}
+            <span class="filter-tag">
+              Genome: {availableGenomes.find(g => g.value === selectedGenome1)?.label}
+              {#if selectedGenome2}
+                ↔ {availableGenomes.find(g => g.value === selectedGenome2)?.label}
+              {/if}
+            </span>
+          {/if}
+          {#if selectedChromosome && selectedGenomeForChromosome}
+            <span class="filter-tag">
+              Chromosome {selectedChromosome} on {availableGenomes.find(g => g.value === selectedGenomeForChromosome)?.label}
+            </span>
+          {/if}
+        </div>
+      </div>
+    {/if}
+  </div>
+
+  {#if matches.length > 0}
+    <div class="section">
+      <h2>Chromosome Matches ({matches.length})</h2>
+      <div class="match-list">
+        {#each matches.slice(0, 20) as match}
+          <div class="match-item">
+            <div class="match-detail">
+              <strong>QryContig {match.qry_contig_id}</strong>
+              <span class="confidence">({match.records[0]?.confidence.toFixed(1)})</span>
+            </div>
+            <div class="match-chromosomes">
+              {#each match.records as record, i}
+                <span class="chr-badge" style="background: {files[record.file_index]?.color}20; color: {files[record.file_index]?.color}; border-color: {files[record.file_index]?.color}">
+                  File{record.file_index} Chr{record.ref_contig_id} ({record.orientation})
+                </span>
+                {#if i < match.records.length - 1}
+                  <span class="arrow">→</span>
+                {/if}
+              {/each}
+            </div>
+          </div>
+        {/each}
+        {#if matches.length > 20}
+          <div class="more-matches">
+            +{matches.length - 20} more matches...
+          </div>
+        {/if}
+      </div>
+    </div>
+  {/if}
+
+  <div class="section debug-info">
+    <h2>Debug Info</h2>
+    <div class="debug-item">
+      <strong>Total Genome Size:</strong> {totalGenomeSize.toLocaleString()} bp
+    </div>
+    <div class="debug-item">
+      <strong>Flow Paths:</strong> {filteredFlowPaths.length} {showDuplicates ? '(self-flow)' : '(cross-genome)'}
+    </div>
+    <div class="debug-item">
+      <strong>Show Self-Flow:</strong> {showDuplicates ? 'ON' : 'OFF'}
+    </div>
+    <div class="debug-item">
+      <strong>Active Filters:</strong> 
+      {selectedQueryContigId ? 'QueryContig ' + selectedQueryContigId + ' ' : ''}
+      {selectedGenome1 ? 'Genome1:' + selectedGenome1 + ' ' : ''}
+      {selectedGenome2 ? 'Genome2:' + selectedGenome2 + ' ' : ''}
+      {selectedChromosome ? 'Chr:' + selectedChromosome + ' ' : ''}
+      {!selectedQueryContigId && !selectedGenome1 && !selectedChromosome ? 'None' : ''}
+    </div>
+  </div>
+</div>
+
+<style>
+  .info {
+    flex: 1;
+    min-width: 280px;
+  }
+
+  .section {
+    margin-bottom: 1.5rem;
+    padding: clamp(0.75rem, 1.5vw, 1rem);
+    background: white;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  h2 {
+    font-size: clamp(0.95rem, 1.4vw, 1rem);
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: #374151;
+  }
+
+  h3 {
+    font-size: clamp(0.85rem, 1.3vw, 0.95rem);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #374151;
+  }
+
+  .overview-section {
+    background: white;
+    border-color: #e2e8f0;
+  }
+
+  .overview-list {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  .overview-item {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  .overview-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .overview-header strong {
+    color: #1e40af;
+    font-size: 0.875rem;
+  }
+
+  .overview-total {
+    padding: 0.25rem 0.5rem;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .overview-confidence {
+    padding: 0.25rem 0.5rem;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .genome-breakdown,
+  .chromosome-breakdown {
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .breakdown-label {
+    font-weight: 500;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
+  }
+
+  .genome-breakdown {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .genome-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
+  .chr-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+  }
+
+  .chr-mini-badge {
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.65rem;
+    font-weight: 500;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
+  .filters-section {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+  }
+
+  .filters-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .filter-group label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .filter-group select {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.8rem;
+    background: white;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .filter-group select:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  .clear-filters-btn {
+    padding: 0.5rem 1rem;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-top: 1.25rem;
+    width: 100%;
+  }
+
+  .clear-filters-btn:hover {
+    background: #4b5563;
+  }
+
+  .active-filters {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .filter-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .filter-tag {
+    padding: 0.25rem 0.5rem;
+    background: #3b82f6;
+    color: white;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .color-box {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .file-name {
+    font-weight: 500;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-size,
+  .file-pct {
+    flex-shrink: 0;
+    color: #6b7280;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  .match-list {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .match-item {
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  .match-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #374151;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    flex-wrap: wrap;
+  }
+
+  .confidence {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-weight: normal;
+  }
+
+  .match-chromosomes {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .chr-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
+  .arrow {
+    color: #9ca3af;
+    font-weight: bold;
+  }
+
+  .more-matches {
+    text-align: center;
+    padding: 0.5rem;
+    color: #6b7280;
+    font-size: 0.75rem;
+    font-style: italic;
+  }
+
+  .debug-info {
+    background: #fef3f3;
+    border-color: #fecaca;
+  }
+
+  .debug-item {
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+    color: #7c2d12;
+  }
+
+  @media (max-width: 1024px) {
+    .overview-list {
+      max-height: 420px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .filters-grid {
+      grid-template-columns: 1fr;
+    }
+    .file-item {
+      grid-template-columns: auto 1fr;
+      grid-auto-rows: auto;
+      row-gap: 0.25rem;
+    }
+    .file-size,
+    .file-pct {
+      grid-column: 2 / -1;
+    }
+    .match-list {
+      max-height: 360px;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .section {
+      padding: 0.75rem;
+    }
+    h2 { font-size: 0.9rem; }
+    h3 { font-size: 0.85rem; }
+    .genome-badge,
+    .chr-badge,
+    .filter-tag {
+      font-size: 0.7rem;
+    }
+    .overview-header strong {
+      font-size: 0.8rem;
+    }
+    .overview-list {
+      max-height: 320px;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .overview-total,
+    .overview-confidence {
+      font-size: 0.65rem;
+      padding: 0.2rem 0.4rem;
+    }
+    .filter-group select {
+      font-size: 0.75rem;
+      padding: 0.45rem;
+    }
+    .clear-filters-btn {
+      font-size: 0.75rem;
+    }
+  }
+
+  @media (max-width: 300px) {
+    .file-item {
+      flex-wrap: wrap;
+      gap: 0.25rem 0.5rem;
+    }
+    .file-name {
+      flex: 1 1 100%;
+    }
+  }
+</style>
