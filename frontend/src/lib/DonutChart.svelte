@@ -103,7 +103,7 @@
   /**
    * Visualization scaling
    */
-  let scale = 1.0;
+  export let scale = 1.0;
   const baseRadius = 80;
   const baseStrokeWidth = 20;
 
@@ -569,17 +569,6 @@ $: flowPaths = (() => {
 <div class="container">
   <div class="chart-section">
     <div class="controls">
-      <label for="scale-slider">
-        Size: {Math.round(((scale - 1.0) / 1.2) * 100)}%
-      </label>
-      <input
-        id="scale-slider"
-        type="range"
-        min="1.0"
-        max="2.2"
-        step="0.1"
-        bind:value={scale}
-      />
       <div class="stats">
         <span>{matches.length} matches | {files.length} genomes</span>
         <span>Total genome size: {totalGenomeSize.toLocaleString()} bp</span>
@@ -686,6 +675,18 @@ $: flowPaths = (() => {
   </div>
 
   <div class="info">
+    <div class="section">
+      <h2>Genomes ({files.length})</h2>
+      {#each files as file, idx}
+        <div class="file-item">
+          <div class="color-box" style="background: {file.color}"></div>
+          <span class="file-name">{file.name}</span>
+          <span class="file-size">{(genomeSizes.get(idx) || 0).toLocaleString()} bp</span>
+          <span class="file-pct">({segments[idx]?.percentage}%)</span>
+        </div>
+      {/each}
+    </div>
+
     {#if matches.length > 0}
       <div class="section overview-section">
         <h2>Query Contig Overview ({queryContigStats.size} unique)</h2>
@@ -819,18 +820,6 @@ $: flowPaths = (() => {
       {/if}
     </div>
 
-    <div class="section">
-      <h2>Genomes ({files.length})</h2>
-      {#each files as file, idx}
-        <div class="file-item">
-          <div class="color-box" style="background: {file.color}"></div>
-          <span class="file-name">{file.name}</span>
-          <span class="file-size">{(genomeSizes.get(idx) || 0).toLocaleString()} bp</span>
-          <span class="file-pct">({segments[idx]?.percentage}%)</span>
-        </div>
-      {/each}
-    </div>
-
     {#if matches.length > 0}
       <div class="section">
         <h2>Chromosome Matches ({matches.length})</h2>
@@ -911,17 +900,7 @@ $: flowPaths = (() => {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-  }
-
-  .controls label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #374151;
-  }
-
-  .controls input[type="range"] {
-    width: 100%;
-    max-width: 300px;
+    margin-top: 0.5rem;
   }
 
   .stats {
@@ -965,8 +944,8 @@ $: flowPaths = (() => {
   }
 
   .overview-section {
-    background: #f0f9ff;
-    border-color: #bfdbfe;
+    background: white;
+    border-color: #e2e8f0;
   }
 
   .overview-list {
@@ -1096,7 +1075,7 @@ $: flowPaths = (() => {
 
   .clear-filters-btn {
     padding: 0.5rem 1rem;
-    background: #6b7280;
+    background: #3b82f6;
     color: white;
     border: none;
     border-radius: 0.375rem;

@@ -4,66 +4,98 @@
    * @prop showDuplicates - Boolean controlling whether to show self-flow lines
    */
   export let showDuplicates = false;
+  export let scale = 1.0;
 </script>
 
 <div class="display-controls">
+  <div class="scale-control">
+    <label for="scale-slider">
+      Size: {Math.round(((scale - 1.0) / 1.2) * 100)}%
+    </label>
+    <input
+      id="scale-slider"
+      type="range"
+      min="1.0"
+      max="2.2"
+      step="0.1"
+      bind:value={scale}
+      class="scale-slider"
+    />
+  </div>
+  
   <label class="toggle-label">
     <input type="checkbox" bind:checked={showDuplicates} />
     <span class="toggle-slider"></span>
-    Show self-flow lines (same genome)
+    Show self flow lines
   </label>
-
-  <div class="toggle-description">
-    {#if showDuplicates}
-      Showing self-flow lines within the same genome
-    {:else}
-      Showing only flow lines between different genomes
-    {/if}
-  </div>
 </div>
 
 <style>
   .display-controls {
     margin-top: 1rem;
-    padding: 1rem;
-    background: white;
-    border-radius: 0.375rem;
-    border: 1px solid #e5e7eb;
+    gap: 2rem;
   }
-  .toggle-label {
+  
+  .scale-control {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    cursor: pointer;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .scale-control label {
+    font-size: 0.875rem;
     font-weight: 500;
     color: #374151;
   }
-  .toggle-label input { display: none; }
+  
+  .scale-slider {
+    width: 300px;
+    margin-bottom: 0.8rem;
+  }
+  
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: 400;
+    color: #6b7280;
+    font-size: 0.875rem;
+  }
+  
+  .toggle-label input { 
+    display: none; 
+  }
+  
   .toggle-slider {
-    width: 3rem;
-    height: 1.5rem;
+    width: 2.25rem;
+    height: 1.125rem;
     background: #d1d5db;
     border-radius: 1rem;
     position: relative;
     transition: background 0.2s;
+    flex-shrink: 0;
   }
+  
   .toggle-slider::before {
     content: '';
     position: absolute;
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 0.875rem;
+    height: 0.875rem;
     background: white;
     border-radius: 50%;
     top: 0.125rem;
     left: 0.125rem;
     transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
-  .toggle-label input:checked + .toggle-slider { background: #3b82f6; }
-  .toggle-label input:checked + .toggle-slider::before { transform: translateX(1.5rem); }
-  .toggle-description {
-    margin-top: 0.5rem;
-    font-size: 0.875rem;
-    color: #6b7280;
-    font-style: italic;
+  
+  .toggle-label input:checked + .toggle-slider { 
+    background: #3b82f6; 
+  }
+  
+  .toggle-label input:checked + .toggle-slider::before { 
+    transform: translateX(1.125rem);
+    background: #dbeafe;
   }
 </style>

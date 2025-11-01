@@ -22,6 +22,7 @@
   export let files: FileData[] = [];
   export let matches: BackendMatch[] = [];
   export let showDuplicates = false;
+  export let scale = 1.0;
 </script>
 
-<DonutChart {files} {matches} {showDuplicates} />
+<DonutChart {files} {matches} {showDuplicates} {scale}/>

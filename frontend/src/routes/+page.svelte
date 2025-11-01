@@ -2,9 +2,10 @@
   import { onMount } from 'svelte';
   import FileUpload from '$lib/FileUpload.svelte';
   import ErrorBanner from '$lib/ErrorBanner.svelte';
-  import DonutVisualization from '$lib/DonutVisualisation.svelte';
+  import DonutVisualisation from '$lib/DonutVisualisation.svelte';
   import DisplayControls from '$lib/DisplayControls.svelte';
   import LoadingSpinner from '$lib/LoadingSpinner.svelte';
+  import TabNav from '$lib/TabNav.svelte';
   import { fetchMatches, type BackendMatch } from '$lib/bincodeDecoder';
 
   /**
@@ -26,6 +27,9 @@
   let matchCount = 0;
   let abortController: AbortController | null = null;
   let showDuplicates = false;
+  let activeTab: 'visualization' | 'analysis' = 'visualization';
+  let hasUploadedFiles = false;
+  let scale = 1.0;
 
   /**
    * Handles file upload and match processing
@@ -48,6 +52,7 @@
     error = '';
     matches = [];
     matchCount = 0;
+    hasUploadedFiles = false;
 
     files = Array.from(fileList).map((file, i) => ({
       name: file.name,
@@ -65,6 +70,7 @@
       );
 
       updateFileCounts();
+      hasUploadedFiles = true;
     } catch (err) {
       if (err instanceof Error) {
         if (err.name === 'AbortError') {
@@ -77,6 +83,21 @@
       }
     } finally {
       isLoading = false;
+      abortController = null;
+    }
+  }
+
+  /**
+   * Resets the application state for new upload
+   */
+  function resetUpload() {
+    files = [];
+    matches = [];
+    error = '';
+    matchCount = 0;
+    hasUploadedFiles = false;
+    if (abortController) {
+      abortController.abort();
       abortController = null;
     }
   }
@@ -132,27 +153,58 @@
 </script>
 
 <main class="page">
-  <h1>Chromosome Flow Visualization</h1>
+  <div class="header">
+    <h1>Chromosome Flow Visualization</h1>
+    {#if hasUploadedFiles && !isLoading}
+      <button class="reset-button" on:click={resetUpload}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M2 8a6 6 0 0 1 10.5-4M14 8a6 6 0 0 1-10.5 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M12.5 2v4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Reupload Files
+      </button>
+    {/if}
+  </div>
 
-  <FileUpload
-    {isLoading}
-    {matchCount}
-    on:upload={(e) => handleFileUpload(e.detail)}
-    on:cancel={cancelUpload}
-  />
+  <TabNav bind:activeTab />
 
-  {#if error}
-    <ErrorBanner {error} />
-  {/if}
+  {#if activeTab === 'visualization'}
+    <div class="tab-content">
+      {#if !hasUploadedFiles && !isLoading}
+        <FileUpload
+          on:upload={(e) => handleFileUpload(e.detail)}
+          on:cancel={cancelUpload}
+        />
+      {/if}
 
-  <DisplayControls bind:showDuplicates />
+      {#if error}
+        <ErrorBanner {error} />
+      {/if}
 
-  {#if isLoading}
-    <LoadingSpinner />
-  {:else if matches.length > 0}
-    <DonutVisualization {files} {matches} {showDuplicates} />
-  {:else}
-    <div class="placeholder">Upload XMAP files to see chromosome flow visualization</div>
+      {#if isLoading}
+        <div class="loading-container">
+          <LoadingSpinner />
+          <p class="loading-text">Processing {matchCount} matches...</p>
+          <button class="cancel-button" on:click={cancelUpload}>Cancel</button>
+        </div>
+      {/if}
+
+      {#if hasUploadedFiles && !isLoading}
+        <DisplayControls bind:showDuplicates bind:scale />
+        <DonutVisualisation {files} {matches} {showDuplicates} {scale} />
+      {/if}
+    </div>
+  {:else if activeTab === 'analysis'}
+    <div class="tab-content">
+      <div class="placeholder-tab">
+        <h2>Analysis Tab</h2>
+        {#if matches.length > 0}
+          <p class="data-status">Data loaded: {matches.length} matches available.</p>
+        {:else}
+          <p class="data-status">No data loaded. Switch to Chromosome Flow tab to upload files.</p>
+        {/if}
+      </div>
+    </div>
   {/if}
 </main>
 
@@ -163,14 +215,106 @@
     margin: 0 auto;
   }
 
-  h1 {
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 2rem;
   }
 
-  .placeholder {
+  h1 {
+    margin: 0;
+  }
+
+  .reset-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: white;
+    color: #3b82f6;
+    border: 2px solid #3b82f6;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+  }
+
+  .reset-button:hover {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .tab-content {
+    animation: fadeIn 0.2s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 4rem;
+    background: white;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  .loading-text {
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  .cancel-button {
+    padding: 0.5rem 1.5rem;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .cancel-button:hover {
+    background: #dc2626;
+  }
+
+  .placeholder-tab {
     text-align: center;
     padding: 4rem;
-    color: #9ca3af;
-    font-size: 1.125rem;
+    background: white;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  .placeholder-tab h2 {
+    color: #374151;
+    margin-bottom: 1rem;
+  }
+
+  .placeholder-tab p {
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+  }
+
+  .data-status {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: #f0f9ff;
+    border-radius: 0.375rem;
+    font-weight: 500;
   }
 </style>
