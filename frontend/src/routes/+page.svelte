@@ -7,6 +7,7 @@
   import LoadingSpinner from '$lib/LoadingSpinner.svelte';
   import TabNav from '$lib/TabNav.svelte';
   import DarkModeToggle from '$lib/DarkModeToggle.svelte';
+  import AreaAnalysis from '$lib/AreaAnalysis.svelte'; 
   import { fetchMatches, type BackendMatch } from '$lib/bincodeDecoder';
   import { darkMode } from '$lib/darkModeStore';
 
@@ -142,7 +143,7 @@
 
 <main class="page">
   <div class="header">
-    <h1>Chromosome Flow Visualization</h1>
+    <h1>OGM Visualiser</h1>
     <div class="header-actions">
       <DarkModeToggle />
       {#if hasUploadedFiles && !isLoading}
@@ -187,14 +188,14 @@
     </div>
   {:else if activeTab === 'analysis'}
     <div class="tab-content">
-      <div class="placeholder-tab">
-        <h2>Analysis Tab</h2>
-        {#if matches.length > 0}
-          <p class="data-status">Data loaded: {matches.length} matches available.</p>
-        {:else}
+      {#if matches.length > 0}
+        <AreaAnalysis {matches} {files} />
+      {:else}
+        <div class="placeholder-tab">
+          <h2>Analysis Tab</h2>
           <p class="data-status">No data loaded. Switch to Chromosome Flow tab to upload files.</p>
-        {/if}
-      </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </main>

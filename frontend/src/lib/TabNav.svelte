@@ -27,7 +27,7 @@
         <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" />
         <path d="M8 2 L8 8 L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
       </svg>
-      Chromosome Flow
+      Chromosomial Flow Chart
     </button>
     
     <button
@@ -40,7 +40,7 @@
         <rect x="6.5" y="6" width="3" height="8" fill="currentColor" />
         <rect x="11" y="3" width="3" height="11" fill="currentColor" />
       </svg>
-      Analysis
+      Analytic Browser
     </button>
   </div>
 </div>
