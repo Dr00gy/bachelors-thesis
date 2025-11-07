@@ -1,6 +1,8 @@
 <script lang="ts">
-  import type { FileData, BackendMatch, DonutSegment, FlowPath, ChromosomeDivision } from './types';
+  import type { BackendMatch } from './bincodeDecoder';
+  import type { FileData, DonutSegment, FlowPath, ChromosomeDivision } from './types';
   import DonutInfo from './DonutInfo.svelte';
+  import { donutFilterState } from './filterStateStore';
 
   /**
    * Component props
@@ -10,13 +12,26 @@
   export let showDuplicates = false;
 
   /**
-   * Filter state
+   * Filter state from store
    */
-  let selectedQueryContigId = '';
-  let selectedGenome1 = '';
-  let selectedGenome2 = '';
-  let selectedChromosome = '';
-  let selectedGenomeForChromosome = '';
+  let selectedQueryContigId = $donutFilterState.selectedQueryContigId;
+  let selectedGenome1 = $donutFilterState.selectedGenome1;
+  let selectedGenome2 = $donutFilterState.selectedGenome2;
+  let selectedChromosome = $donutFilterState.selectedChromosome;
+  let selectedGenomeForChromosome = $donutFilterState.selectedGenomeForChromosome;
+
+  /**
+   * Update store when filters change
+   */
+  $: donutFilterState.set({
+    selectedQueryContigId,
+    selectedGenome1,
+    selectedGenome2,
+    selectedChromosome,
+    selectedGenomeForChromosome,
+    showDuplicates,
+    scale
+  });
 
   /**
    * Visualization scaling
@@ -383,7 +398,7 @@
       filtered = filtered.filter(path => !path.isSameGenome);
     }
 
-    if (selectedQueryContigId) {
+    if (selectedQueryContigId !== '') {
       const queryId = parseInt(selectedQueryContigId);
       filtered = filtered.filter(path => path.qryContigId === queryId);
     }
@@ -402,7 +417,7 @@
       );
     }
 
-    if (selectedChromosome && selectedGenomeForChromosome !== '') {
+    if (selectedChromosome !== '' && selectedGenomeForChromosome !== '') {
       const chromosome = parseInt(selectedChromosome);
       const genome = parseInt(selectedGenomeForChromosome);
       filtered = filtered.filter(path => 
@@ -553,24 +568,24 @@
   </div>
 
   <DonutInfo
-    {files}
-    {matches}
-    {segments}
-    {genomeSizes}
-    {totalGenomeSize}
-    {filteredFlowPaths}
-    {showDuplicates}
-    {selectedQueryContigId}
-    {selectedGenome1}
-    {selectedGenome2}
-    {selectedChromosome}
-    {selectedGenomeForChromosome}
-    {availableQueryContigIds}
-    {availableGenomes}
-    {availableChromosomes}
-    {queryContigStats}
-    {clearAllFilters}
-  />
+      {files}
+      {matches}
+      {segments}
+      {genomeSizes}
+      {totalGenomeSize}
+      {filteredFlowPaths}
+      {showDuplicates}
+      bind:selectedQueryContigId
+      bind:selectedGenome1
+      bind:selectedGenome2
+      bind:selectedChromosome
+      bind:selectedGenomeForChromosome
+      {availableQueryContigIds}
+      {availableGenomes}
+      {availableChromosomes}
+      {queryContigStats}
+      {clearAllFilters}
+    />
 </div>
 
 <style>

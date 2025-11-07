@@ -8,11 +8,13 @@
     export let totalGenomeSize = 0;
     export let filteredFlowPaths: any[] = [];
     export let showDuplicates = false;
+  
     export let selectedQueryContigId = '';
     export let selectedGenome1 = '';
     export let selectedGenome2 = '';
     export let selectedChromosome = '';
     export let selectedGenomeForChromosome = '';
+    
     export let availableQueryContigIds: number[] = [];
     export let availableGenomes: { value: string; label: string; color: string }[] = [];
     export let availableChromosomes: string[] = [];
@@ -24,6 +26,76 @@
     }> = new Map();
 
     export let clearAllFilters: () => void = () => {};
+
+    /**
+     * Pagination state for query contig overview
+     */
+    let overviewPage = 1;
+    const overviewItemsPerPage = 10;
+
+    /**
+     * Pagination state for chromosome matches
+     */
+    let matchesPage = 1;
+    const matchesItemsPerPage = 10;
+
+    /**
+     * Calculate paginated overview items
+     */
+    $: sortedQueryContigs = Array.from(queryContigStats.entries())
+      .sort((a, b) => b[1].totalOccurrences - a[1].totalOccurrences);
+    
+    $: totalOverviewPages = Math.ceil(sortedQueryContigs.length / overviewItemsPerPage);
+    $: paginatedOverview = sortedQueryContigs.slice(
+      (overviewPage - 1) * overviewItemsPerPage,
+      overviewPage * overviewItemsPerPage
+    );
+
+    /**
+     * Calculate paginated match items
+     */
+    $: mergedMatches = (() => {
+      const merged = new Map<number, Map<string, MatchedRecord>>();
+      for (const match of matches) {
+        const id = match.qry_contig_id;
+        if (!merged.has(id)) {
+          merged.set(id, new Map());
+        }
+        const recordMap = merged.get(id)!;
+
+        for (const record of match.records) {
+          const key = `${record.file_index}-${record.ref_contig_id}-${record.orientation}-${record.confidence}`;
+          if (!recordMap.has(key)) {
+            recordMap.set(key, record);
+          }
+        }
+      }
+
+      return Array.from(merged.entries()).map(([id, recordMap]) => ({
+        qry_contig_id: id,
+        records: Array.from(recordMap.values()).sort((a, b) => {
+          if (a.file_index !== b.file_index) return a.file_index - b.file_index;
+          return a.ref_contig_id - b.ref_contig_id;
+        })
+      }));
+    })();
+
+    $: totalMatchesPages = Math.ceil(mergedMatches.length / matchesItemsPerPage);
+    $: paginatedMatches = mergedMatches.slice(
+      (matchesPage - 1) * matchesItemsPerPage,
+      matchesPage * matchesItemsPerPage
+    );
+
+    /**
+     * Pagination controls
+     */
+    function goToOverviewPage(page: number) {
+      overviewPage = Math.max(1, Math.min(page, totalOverviewPages));
+    }
+
+    function goToMatchesPage(page: number) {
+      matchesPage = Math.max(1, Math.min(page, totalMatchesPages));
+    }
 </script>
 
 <div class="info">
@@ -43,7 +115,7 @@
     <div class="section overview-section">
       <h2>Query Contig Overview ({queryContigStats.size} unique)</h2>
       <div class="overview-list">
-        {#each Array.from(queryContigStats.entries()).sort((a, b) => b[1].totalOccurrences - a[1].totalOccurrences).slice(0, 10) as [qryId, stat]}
+        {#each paginatedOverview as [qryId, stat]}
           <div class="overview-item">
             <div class="overview-header">
               <strong>QryContig {qryId}</strong>
@@ -77,12 +149,43 @@
             </div>
           </div>
         {/each}
-        {#if queryContigStats.size > 10}
-          <div class="more-matches">
-            +{queryContigStats.size - 10} more query contigs...
-          </div>
-        {/if}
       </div>
+      
+      {#if totalOverviewPages > 1}
+        <div class="pagination">
+          <button 
+            class="page-btn" 
+            on:click={() => goToOverviewPage(1)}
+            disabled={overviewPage === 1}
+          >
+            ««
+          </button>
+          <button 
+            class="page-btn" 
+            on:click={() => goToOverviewPage(overviewPage - 1)}
+            disabled={overviewPage === 1}
+          >
+            «
+          </button>
+          <span class="page-info">
+            ({overviewPage} / {totalOverviewPages})
+          </span>
+          <button 
+            class="page-btn" 
+            on:click={() => goToOverviewPage(overviewPage + 1)}
+            disabled={overviewPage === totalOverviewPages}
+          >
+            »
+          </button>
+          <button 
+            class="page-btn" 
+            on:click={() => goToOverviewPage(totalOverviewPages)}
+            disabled={overviewPage === totalOverviewPages}
+          >
+            »»
+          </button>
+        </div>
+      {/if}
     </div>
   {/if}
 
@@ -105,7 +208,9 @@
         <select id="genome1-filter" bind:value={selectedGenome1}>
           <option value="">All Genomes</option>
           {#each availableGenomes as genome}
-            <option value={genome.value}>{genome.label}</option>
+            {#if genome.value !== selectedGenome2}
+              <option value={genome.value}>{genome.label}</option>
+            {/if}
           {/each}
         </select>
       </div>
@@ -115,7 +220,9 @@
         <select id="genome2-filter" bind:value={selectedGenome2}>
           <option value="">Any Genome</option>
           {#each availableGenomes as genome}
-            <option value={genome.value}>{genome.label}</option>
+            {#if genome.value !== selectedGenome1}
+              <option value={genome.value}>{genome.label}</option>
+            {/if}
           {/each}
         </select>
       </div>
@@ -124,9 +231,21 @@
         <label for="genome-chromosome-filter">Genome for Chromosome:</label>
         <select id="genome-chromosome-filter" bind:value={selectedGenomeForChromosome}>
           <option value="">Select Genome</option>
-          {#each availableGenomes as genome}
-            <option value={genome.value}>{genome.label}</option>
-          {/each}
+          {#if selectedGenome1 !== ''}
+            <option value={selectedGenome1}>
+              {availableGenomes.find(g => g.value === selectedGenome1)?.label}
+            </option>
+          {/if}
+          {#if selectedGenome2 !== '' && selectedGenome2 !== selectedGenome1}
+            <option value={selectedGenome2}>
+              {availableGenomes.find(g => g.value === selectedGenome2)?.label}
+            </option>
+          {/if}
+          {#if selectedGenome1 === '' && selectedGenome2 === ''}
+            {#each availableGenomes as genome}
+              <option value={genome.value}>{genome.label}</option>
+            {/each}
+          {/if}
         </select>
       </div>
 
@@ -172,38 +291,11 @@
     {/if}
   </div>
 
-    {#if matches.length > 0}
-    {@const mergedMatches = (() => {
-      const merged = new Map<number, Map<string, MatchedRecord>>();
-      for (const match of matches) {
-        const id = match.qry_contig_id;
-        if (!merged.has(id)) {
-          merged.set(id, new Map());
-        }
-        const recordMap = merged.get(id)!;
-
-        // deduplicated records from BE matches js for ts widget
-        for (const record of match.records) {
-          const key = `${record.file_index}-${record.ref_contig_id}-${record.orientation}-${record.confidence}`;
-          if (!recordMap.has(key)) {
-            recordMap.set(key, record);
-          }
-        }
-      }
-
-      return Array.from(merged.entries()).map(([id, recordMap]) => ({
-        qry_contig_id: id,
-        records: Array.from(recordMap.values()).sort((a, b) => {
-          if (a.file_index !== b.file_index) return a.file_index - b.file_index;
-          return a.ref_contig_id - b.ref_contig_id;
-        })
-      }));
-    })()}
-
+  {#if matches.length > 0}
     <div class="section">
       <h2>Chromosome Matches ({mergedMatches.length} unique contigs)</h2>
       <div class="match-list">
-        {#each mergedMatches.slice(0, 20) as match}
+        {#each paginatedMatches as match}
           <div class="match-item">
             <div class="match-header">
               <strong>QryContig {match.qry_contig_id}</strong>
@@ -225,12 +317,43 @@
             </div>
           </div>
         {/each}
-        {#if mergedMatches.length > 20}
-          <div class="more-matches">
-            +{mergedMatches.length - 20} more query contigs...
-          </div>
-        {/if}
       </div>
+      
+      {#if totalMatchesPages > 1}
+        <div class="pagination">
+          <button 
+            class="page-btn" 
+            on:click={() => goToMatchesPage(1)}
+            disabled={matchesPage === 1}
+          >
+            ««
+          </button>
+          <button 
+            class="page-btn" 
+            on:click={() => goToMatchesPage(matchesPage - 1)}
+            disabled={matchesPage === 1}
+          >
+            «
+          </button>
+          <span class="page-info">
+            ({matchesPage} / {totalMatchesPages})
+          </span>
+          <button 
+            class="page-btn" 
+            on:click={() => goToMatchesPage(matchesPage + 1)}
+            disabled={matchesPage === totalMatchesPages}
+          >
+            »
+          </button>
+          <button 
+            class="page-btn" 
+            on:click={() => goToMatchesPage(totalMatchesPages)}
+            disabled={matchesPage === totalMatchesPages}
+          >
+            »»
+          </button>
+        </div>
+      {/if}
     </div>
   {/if}
 
@@ -379,6 +502,49 @@
     white-space: nowrap;
   }
 
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .page-btn {
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 2.5rem;
+  }
+
+  .page-btn:hover:not(:disabled) {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+  }
+
+  .page-btn:disabled {
+    background: var(--bg-hover);
+    color: var(--text-tertiary);
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .page-info {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
   .filters-section {
     background: var(--bg-accent);
     border-color: var(--border-color);
@@ -518,14 +684,6 @@
     white-space: nowrap;
   }
 
-  .more-matches {
-    text-align: center;
-    padding: 0.5rem;
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-    font-style: italic;
-  }
-
   .occurrence {
     margin-top: 1.0rem;
   }
@@ -589,6 +747,15 @@
     }
     .overview-list {
       max-height: 320px;
+    }
+    .page-btn {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.8rem;
+      min-width: 2rem;
+    }
+    .page-info {
+      font-size: 0.8rem;
+      padding: 0.4rem 0.6rem;
     }
   }
 
