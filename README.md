@@ -12,5 +12,11 @@ To observe deviations of the studied genome from the reference genome, it is nec
 ## Docker
 After cloning the repo, just run `docker-compose up --build` !
 
-## Other
-For testing, I have included some small .xmap files in the "files" folder.
+## Testing
+### Manual
+I have included some .xmap files in the "files" folder, which can be uploaded in the app.
+
+### Cargo test and Vitest
+When testing the backend, run `cargo test` !
+
+For the frontend tests, run `npm test` !

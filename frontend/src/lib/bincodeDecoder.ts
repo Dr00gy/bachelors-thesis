@@ -272,3 +272,7 @@ export async function fetchMatches(
 
   return matches;
 }
+
+export const __testUtils = {
+  decodeBackendMatch,
+};
