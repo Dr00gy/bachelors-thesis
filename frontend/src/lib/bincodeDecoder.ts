@@ -27,10 +27,12 @@ export interface BackendMatch {
  */
 class ByteReader {
   private data: Uint8Array;
+  private view: DataView;
   private pos: number;
 
   constructor(data: Uint8Array) {
     this.data = data;
+    this.view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     this.pos = 0;
   }
 
@@ -39,57 +41,62 @@ class ByteReader {
     if (this.pos >= this.data.length) {
       throw new Error(`Read past end: pos=${this.pos}, len=${this.data.length}`);
     }
-    return this.data[this.pos++];
+    const v = this.view.getUint8(this.pos);
+    this.pos += 1;
+    return v;
   }
 
   /** Reads a 32-bit unsigned integer in little-endian format */
   readU32(): number {
-    const b0 = this.readU8();
-    const b1 = this.readU8();
-    const b2 = this.readU8();
-    const b3 = this.readU8();
-    return b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
+    if (this.pos + 4 > this.data.length) {
+      throw new Error(`readU32 out of range at ${this.pos}`);
+    }
+    const v = this.view.getUint32(this.pos, true);
+    this.pos += 4;
+    return v;
   }
 
   /** Reads a 64-bit unsigned integer in little-endian format */
   readU64(): bigint {
-    const low = BigInt(this.readU32());
-    const high = BigInt(this.readU32());
-    return low | (high << 32n);
+    if (this.pos + 8 > this.data.length) {
+      throw new Error(`readU64 out of range at ${this.pos}`);
+    }
+    const v = this.view.getBigUint64(this.pos, true);
+    this.pos += 8;
+    return v;
   }
 
   /** Reads a 64-bit floating point number in little-endian format */
   readF64(): number {
-    const bytes = new Uint8Array(8);
-    for (let i = 0; i < 8; i++) {
-      bytes[i] = this.readU8();
+    if (this.pos + 8 > this.data.length) {
+      throw new Error(`readF64 out of range at ${this.pos}`);
     }
-    return new DataView(bytes.buffer).getFloat64(0, true);
+    const v = this.view.getFloat64(this.pos, true);
+    this.pos += 8;
+    return v;
   }
 
-  /** Reads a UTF-8 character with proper encoding handling */
+  /** Reads exactly one UTF-8 character */
+  private static decoder = new TextDecoder('utf-8');
+
   readChar(): string {
-    const charBytes: number[] = [];
-    const firstByte = this.readU8();
-    charBytes.push(firstByte);
-    
-    let additionalBytes = 0;
-    if ((firstByte & 0x80) === 0) {
-      additionalBytes = 0;
-    } else if ((firstByte & 0xE0) === 0xC0) {
-      additionalBytes = 1;
-    } else if ((firstByte & 0xF0) === 0xE0) {
-      additionalBytes = 2;
-    } else if ((firstByte & 0xF8) === 0xF0) {
-      additionalBytes = 3;
+    const first = this.readU8();
+
+    let length = 1;
+    if ((first & 0x80) === 0) length = 1;
+    else if ((first & 0xE0) === 0xC0) length = 2;
+    else if ((first & 0xF0) === 0xE0) length = 3;
+    else if ((first & 0xF8) === 0xF0) length = 4;
+    else throw new Error(`Invalid UTF-8 start byte: ${first}`);
+
+    // read remaining bytes if any
+    const bytes = new Uint8Array(length);
+    bytes[0] = first;
+    for (let i = 1; i < length; i++) {
+      bytes[i] = this.readU8();
     }
-    
-    for (let i = 0; i < additionalBytes; i++) {
-      charBytes.push(this.readU8());
-    }
-    
-    const decoder = new TextDecoder('utf-8');
-    return decoder.decode(new Uint8Array(charBytes));
+
+    return ByteReader.decoder.decode(bytes);
   }
 
   /** Returns number of bytes remaining to read */

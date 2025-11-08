@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { BackendMatch } from './bincodeDecoder';
-  import type { FileData } from './types';
+  import type { BackendMatch } from '../lib/bincodeDecoder';
+  import type { FileData } from '../lib/types';
 
   /**
    * Component props

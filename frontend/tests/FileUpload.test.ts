@@ -1,6 +1,6 @@
 import { render, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect } from 'vitest';
-import FileUpload from '../src/lib/FileUpload.svelte';
+import FileUpload from '../src/routes/FileUpload.svelte';
 
 describe('FileUpload', () => {
   it('accepts files via hidden input', async () => {

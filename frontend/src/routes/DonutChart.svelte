@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { BackendMatch } from './bincodeDecoder';
-  import type { FileData, DonutSegment, FlowPath, ChromosomeDivision } from './types';
+  import type { BackendMatch } from '$lib/bincodeDecoder';
+  import type { FileData, DonutSegment, FlowPath, ChromosomeDivision } from '$lib/types';
   import DonutInfo from './DonutInfo.svelte';
-  import { donutFilterState } from './filterStateStore';
+  import { donutFilterState } from '$lib/filterStateStore';
 
   /**
    * Component props

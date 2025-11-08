@@ -10,7 +10,7 @@
 </script>
 
 <script lang="ts">
-  import DonutChart from '$lib/DonutChart.svelte';
+  import DonutChart from './DonutChart.svelte';
   import type { BackendMatch } from '$lib/bincodeDecoder';
 
   /**

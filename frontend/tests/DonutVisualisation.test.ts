@@ -1,6 +1,6 @@
 import { render } from '@testing-library/svelte';
 import { describe, it, expect } from 'vitest';
-import DonutVisualisation from '../src/lib/DonutVisualisation.svelte';
+import DonutVisualisation from '../src/routes/DonutVisualisation.svelte';
 import { mockBackendMatch } from './__mocks__/bincodeMock';
 
 describe('DonutVisualisation', () => {

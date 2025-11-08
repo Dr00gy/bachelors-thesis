@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import FileUpload from '$lib/FileUpload.svelte';
-  import ErrorBanner from '$lib/ErrorBanner.svelte';
-  import DonutVisualisation from '$lib/DonutVisualisation.svelte';
-  import DisplayControls from '$lib/DisplayControls.svelte';
-  import LoadingSpinner from '$lib/LoadingSpinner.svelte';
-  import TabNav from '$lib/TabNav.svelte';
-  import DarkModeToggle from '$lib/DarkModeToggle.svelte';
-  import AreaAnalysis from '$lib/AreaAnalysis.svelte'; 
+  import FileUpload from './FileUpload.svelte';
+  import ErrorBanner from './ErrorBanner.svelte';
+  import DonutVisualisation from './DonutVisualisation.svelte';
+  import DisplayControls from './DisplayControls.svelte';
+  import LoadingSpinner from './LoadingSpinner.svelte';
+  import TabNav from './TabNav.svelte';
+  import DarkModeToggle from './DarkModeToggle.svelte';
+  import AreaAnalysis from './AreaAnalysis.svelte'; 
   import { fetchMatches, type BackendMatch } from '$lib/bincodeDecoder';
   import { darkMode } from '$lib/darkModeStore';
 
