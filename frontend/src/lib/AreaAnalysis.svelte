@@ -16,6 +16,19 @@
   let windowSize = 100000;
   let currentWindowIndex = 0;
   let hoveredContig: any = null;
+  let searchQuery = '';
+  
+  /**
+   * Window jump editing state
+   */
+  let editingWindowPage = false;
+  let windowPageInput = '';
+
+  /**
+   * Track filtered windows when searching
+   */
+  let filteredWindows: number[] = [];
+  let isSearching = false;
 
   /**
    * Generates consistent HSL color for contig IDs
@@ -75,12 +88,19 @@
     const stacked: any[][] = [];
     for (const record of visibleRecords) {
       let placed = false;
-      
       for (let trackIndex = 0; trackIndex < stacked.length; trackIndex++) {
         const track = stacked[trackIndex];
-        const lastInTrack = track[track.length - 1];
         
-        if (record.ref_start_pos > lastInTrack.ref_end_pos) {
+        let hasOverlap = false;
+        for (const existingRecord of track) {
+          if (record.ref_start_pos < existingRecord.ref_end_pos && 
+              record.ref_end_pos > existingRecord.ref_start_pos) {
+            hasOverlap = true;
+            break;
+          }
+        }
+        
+        if (!hasOverlap) {
           track.push(record);
           placed = true;
           break;
@@ -114,6 +134,7 @@
       selectedFiles = [...selectedFiles, fileIndex].sort((a, b) => a - b);
     }
     currentWindowIndex = 0;
+    resetSearch();
   }
 
   /**
@@ -122,6 +143,7 @@
   function selectAllFiles() {
     selectedFiles = files.map((_, idx) => idx);
     currentWindowIndex = 0;
+    resetSearch();
   }
 
   /**
@@ -130,21 +152,148 @@
   function clearFileSelection() {
     selectedFiles = [];
     currentWindowIndex = 0;
+    resetSearch();
+  }
+
+  /**
+   * Resets search state
+   */
+  function resetSearch() {
+    searchQuery = '';
+    isSearching = false;
+    filteredWindows = [];
+    currentWindowIndex = 0;
+  }
+
+  /**
+   * Finds windows that contain a specific contig ID
+   */
+  function findWindowsWithContig(contigId: number, records: any[], chromosomeRange: any, windowSize: number): number[] {
+    const contigRecords = records.filter(record => record.qry_contig_id === contigId);
+    if (contigRecords.length === 0) return [];
+
+    const windowsWithContig = new Set<number>();
+    
+    for (const record of contigRecords) {
+      const startWindow = Math.floor((record.ref_start_pos - chromosomeRange.min) / windowSize);
+      const endWindow = Math.floor((record.ref_end_pos - chromosomeRange.min) / windowSize);
+      
+      for (let windowIndex = startWindow; windowIndex <= endWindow; windowIndex++) {
+        if (windowIndex >= 0) {
+          windowsWithContig.add(windowIndex);
+        }
+      }
+    }
+    
+    return Array.from(windowsWithContig).sort((a, b) => a - b);
+  }
+
+  /**
+   * Finds the first occurrence of a contig ID and jumps to its window
+   */
+  function jumpToContig(contigId: number) {
+    const records = getRecordsForChromosome(matches, selectedFiles, selectedChromosome);
+    const contigRecords = records.filter(record => record.qry_contig_id === contigId);
+    
+    if (contigRecords.length === 0) return;
+    
+    // finds all windows that contain this contig and jumps to first occurence
+    filteredWindows = findWindowsWithContig(contigId, records, chromosomeRange, windowSize);
+    isSearching = true;
+    
+    if (filteredWindows.length > 0) {
+      currentWindowIndex = filteredWindows[0];
+    }
+  }
+
+  /**
+   * Handles search submission
+   */
+  function handleSearch() {
+    if (!searchQuery.trim()) {
+      resetSearch();
+      return;
+    }
+    
+    const contigId = parseInt(searchQuery.trim());
+    if (!isNaN(contigId)) {
+      jumpToContig(contigId);
+    }
+  }
+
+  /**
+   * Handles keydown in search input
+   */
+  function handleSearchKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      handleSearch();
+    } else if (e.key === 'Escape') {
+      resetSearch();
+    }
+  }
+
+  /**
+   * Clears search and shows all records
+   */
+  function clearSearch() {
+    resetSearch();
+  }
+
+  /**
+   * Navigate to next/previous window considering filtered windows
+   */
+  function goToNextWindow() {
+    if (isSearching && filteredWindows.length > 0) {
+      const currentIndexInFiltered = filteredWindows.indexOf(currentWindowIndex);
+      if (currentIndexInFiltered < filteredWindows.length - 1) {
+        currentWindowIndex = filteredWindows[currentIndexInFiltered + 1];
+      }
+    } else {
+      currentWindowIndex++;
+    }
+  }
+
+  function goToPrevWindow() {
+    if (isSearching && filteredWindows.length > 0) {
+      const currentIndexInFiltered = filteredWindows.indexOf(currentWindowIndex);
+      if (currentIndexInFiltered > 0) {
+        currentWindowIndex = filteredWindows[currentIndexInFiltered - 1];
+      }
+    } else {
+      currentWindowIndex--;
+    }
   }
 
   /**
    * Reactive computed values for chromosome data and visualization
    */
   $: chromosomeRecords = getRecordsForChromosome(matches, selectedFiles, selectedChromosome);
+  $: filteredChromosomeRecords = chromosomeRecords.filter(record => {
+    if (!searchQuery || !isSearching) return true;
+    const query = searchQuery.toLowerCase();
+    return record.qry_contig_id.toString().includes(query);
+  });
   $: chromosomeRange = getChromosomeRange(chromosomeRecords);
   $: chromosomeRefLen = chromosomeRecords.length > 0 ? chromosomeRecords[0].ref_len : windowSize;
+  
+  $: totalWindows = Math.ceil(chromosomeRefLen / windowSize);
+  $: effectiveTotalWindows = isSearching ? filteredWindows.length : totalWindows;
+  $: effectiveCurrentWindowIndex = isSearching ? 
+    (filteredWindows.indexOf(currentWindowIndex) + 1 || 1) : 
+    (currentWindowIndex + 1);
+  
   $: windowStart = chromosomeRange.min + (currentWindowIndex * windowSize);
   $: windowEnd = Math.min(windowStart + windowSize, chromosomeRefLen);
-  $: totalWindows = Math.ceil(chromosomeRefLen / windowSize);
-  $: stackedContigs = stackContigs(chromosomeRecords, windowStart, windowEnd);
-  $: uniqueContigs = Array.from(new Set(chromosomeRecords.map(r => r.qry_contig_id))).sort((a, b) => a - b);
-  $: canGoPrev = currentWindowIndex > 0;
-  $: canGoNext = currentWindowIndex < totalWindows - 1;
+  
+  $: stackedContigs = stackContigs(filteredChromosomeRecords, windowStart, windowEnd);
+  $: uniqueContigs = Array.from(new Set(filteredChromosomeRecords.map(r => r.qry_contig_id))).sort((a, b) => a - b);
+  
+  $: canGoPrev = isSearching ? 
+    filteredWindows.indexOf(currentWindowIndex) > 0 : 
+    currentWindowIndex > 0;
+  $: canGoNext = isSearching ? 
+    filteredWindows.indexOf(currentWindowIndex) < filteredWindows.length - 1 : 
+    currentWindowIndex < totalWindows - 1;
 
   /**
    * Available chromosomes (1-23)
@@ -156,6 +305,37 @@
    */
   function handleChromosomeChange() {
     currentWindowIndex = 0;
+    resetSearch();
+  }
+
+  /**
+   * Window jump functions
+   */
+  function startEditingWindowPage() {
+    editingWindowPage = true;
+    windowPageInput = effectiveCurrentWindowIndex.toString();
+  }
+
+  function submitWindowPageJump() {
+    const pageNum = parseInt(windowPageInput);
+    if (!isNaN(pageNum)) {
+      if (isSearching && filteredWindows.length > 0) {
+        const newFilteredIndex = Math.max(0, Math.min(pageNum - 1, filteredWindows.length - 1));
+        currentWindowIndex = filteredWindows[newFilteredIndex];
+      } else {
+        const newIndex = Math.max(0, Math.min(pageNum - 1, totalWindows - 1));
+        currentWindowIndex = newIndex;
+      }
+    }
+    editingWindowPage = false;
+  }
+
+  function handleWindowPageKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      submitWindowPageJump();
+    } else if (e.key === 'Escape') {
+      editingWindowPage = false;
+    }
   }
 </script>
 
@@ -199,15 +379,34 @@
   <!-- Query contig legend -->
   {#if uniqueContigs.length > 0}
     <div class="legend">
-      <h3>Query Contigs ({uniqueContigs.length})</h3>
-      <div class="legend-items">
-        {#each uniqueContigs as contigId}
-          <div class="legend-item">
-            <div class="legend-color" style="background: {generateContigColor(contigId)}"></div>
-            <span>QryContig {contigId}</span>
-          </div>
-        {/each}
+      <div class="legend-header">
+        <h3>
+          {#if isSearching}
+            Showing Contig {searchQuery} ({filteredWindows.length} windows)
+          {:else}
+            Query Contigs ({uniqueContigs.length})
+          {/if}
+        </h3>
+        <div class="search-bar">
+          <input
+            type="text"
+            placeholder="Search contig ID and press Enter..."
+            bind:value={searchQuery}
+            on:keydown={handleSearchKeydown}
+            class="search-input"
+          />
+        </div>
       </div>
+      {#if !isSearching}
+        <div class="legend-items">
+          {#each uniqueContigs as contigId}
+            <div class="legend-item">
+              <div class="legend-color" style="background: {generateContigColor(contigId)}"></div>
+              <span>QryContig {contigId}</span>
+            </div>
+          {/each}
+        </div>
+      {/if}
     </div>
   {/if}
 
@@ -215,13 +414,42 @@
   <div class="window-info">
     <div class="window-position">
       <strong>Window:</strong> {windowStart.toLocaleString()} - {windowEnd.toLocaleString()} bp
-      <span class="window-count">({currentWindowIndex + 1} / {totalWindows})</span>
+      {#if isSearching}
+        <span class="search-indicator">(Searching: Contig {searchQuery})</span>
+      {/if}
+      {#if editingWindowPage}
+        <input
+          type="text"
+          class="window-page-input"
+          bind:value={windowPageInput}
+          on:keydown={handleWindowPageKeydown}
+          on:blur={submitWindowPageJump}
+          on:focus
+        />
+      {:else}
+        <span 
+          class="window-count" 
+          on:dblclick={startEditingWindowPage}
+          role="button"
+          tabindex="0"
+          on:keydown={(e) => { // AIRA role, focused, key sup
+            if (e.key === 'Enter' || e.key === ' ') {
+              startEditingWindowPage();
+            }
+          }}
+        >
+          ({effectiveCurrentWindowIndex} / {effectiveTotalWindows})
+          {#if isSearching && filteredWindows.length > 0}
+            <span class="filtered-pages">(Filtered)</span>
+          {/if}
+        </span>
+      {/if}
     </div>
     <div class="window-navigation">
-      <button on:click={() => currentWindowIndex--} disabled={!canGoPrev}>
+      <button on:click={goToPrevWindow} disabled={!canGoPrev}>
         ← Previous
       </button>
-      <button on:click={() => currentWindowIndex++} disabled={!canGoNext}>
+      <button on:click={goToNextWindow} disabled={!canGoNext}>
         Next →
       </button>
     </div>
@@ -239,7 +467,11 @@
       </div>
     {:else if stackedContigs.length === 0}
       <div class="empty-state">
-        No mappings in this window. Use navigation buttons to explore other regions.
+        {#if isSearching}
+          No occurrences of Contig {searchQuery} in this window
+        {:else}
+          No mappings in this window. Use navigation buttons to explore other regions.
+        {/if}
       </div>
     {:else}
       <!-- Genomic position markers -->
@@ -266,6 +498,7 @@
               <div
                 class="contig"
                 class:hovered={hoveredContig === record}
+                class:search-match={isSearching && record.qry_contig_id.toString() === searchQuery}
                 style="left: {startX}%; width: {width}%; background: {generateContigColor(record.qry_contig_id)}"
                 on:mouseenter={() => hoveredContig = record}
                 on:mouseleave={() => hoveredContig = null}
@@ -426,8 +659,15 @@
     border: 1px solid var(--border-color);
   }
 
-  .legend h3 {
+  .legend-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
     margin-bottom: 1rem;
+  }
+
+  .legend h3 {
+    margin: 0;
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-primary);
@@ -475,6 +715,74 @@
   .window-count {
     margin-left: 1rem;
     color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: background 0.2s;
+  }
+
+  .window-count:hover {
+    background: rgba(100, 123, 212, 0.1);
+    color: white;
+    border-color: var(--accent-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .window-page-input {
+    width: 5rem;
+    padding: 0.25rem 0.5rem;
+    margin-left: 0.5rem;
+    text-align: center;
+    font-size: 0.875rem;
+    border: 2px solid var(--accent-primary);
+    border-radius: 0.25rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  .search-bar {
+    position: relative;
+    max-width: 100%;
+        width: 100%;
+    box-sizing: border-box;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    border: 1px solid var(--border-color-dark);
+    border-radius: 0.375rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+
+  .search-input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+    .search-indicator {
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--accent-primary);
+    font-weight: 500;
+  }
+
+  .filtered-pages {
+    margin-left: 0.25rem;
+    font-size: 0.7rem;
+    color: var(--accent-primary);
+    font-style: italic;
   }
 
   .window-navigation {
@@ -548,7 +856,8 @@
   }
 
   .contigs-container {
-    position: relative;
+    display: flex;
+    flex-direction: column;
   }
 
   .contig-track {
@@ -557,6 +866,7 @@
   }
 
   .contig {
+    top: 0;
     position: absolute;
     height: 5px;
     border-radius: 2px;

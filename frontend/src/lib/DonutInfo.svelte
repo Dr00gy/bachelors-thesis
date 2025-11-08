@@ -28,6 +28,27 @@
     export let clearAllFilters: () => void = () => {};
 
     /**
+     * Search state
+     */
+    let overviewSearchQuery = '';
+    let matchesSearchQuery = '';
+    
+    /**
+     * Search type state
+     */
+    type SearchType = 'contig' | 'chromosome' | 'confidence';
+    let overviewSearchType: SearchType = 'contig';
+    let matchesSearchType: SearchType = 'contig';
+
+    /**
+     * Page jump editing state
+     */
+    let editingOverviewPage = false;
+    let editingMatchesPage = false;
+    let overviewPageInput = '';
+    let matchesPageInput = '';
+
+    /**
      * Pagination state for query contig overview
      */
     let overviewPage = 1;
@@ -40,9 +61,26 @@
     const matchesItemsPerPage = 10;
 
     /**
-     * Calculate paginated overview items
+     * Calculate paginated overview items with search
      */
     $: sortedQueryContigs = Array.from(queryContigStats.entries())
+      .filter(([qryId, stat]) => {
+        if (!overviewSearchQuery) return true;
+        const query = overviewSearchQuery.toLowerCase();
+        
+        switch (overviewSearchType) {
+          case 'contig':
+            return qryId.toString().includes(query);
+          case 'chromosome':
+            return Array.from(stat.chromosomeOccurrences.keys()).some(chrKey => 
+              chrKey.toLowerCase().includes(query)
+            );
+          case 'confidence':
+            return stat.maxConfidence.toFixed(2).includes(query);
+          default:
+            return true;
+        }
+      })
       .sort((a, b) => b[1].totalOccurrences - a[1].totalOccurrences);
     
     $: totalOverviewPages = Math.ceil(sortedQueryContigs.length / overviewItemsPerPage);
@@ -52,7 +90,7 @@
     );
 
     /**
-     * Calculate paginated match items
+     * Calculate paginated match items with search
      */
     $: mergedMatches = (() => {
       const merged = new Map<number, Map<string, MatchedRecord>>();
@@ -71,13 +109,34 @@
         }
       }
 
-      return Array.from(merged.entries()).map(([id, recordMap]) => ({
-        qry_contig_id: id,
-        records: Array.from(recordMap.values()).sort((a, b) => {
-          if (a.file_index !== b.file_index) return a.file_index - b.file_index;
-          return a.ref_contig_id - b.ref_contig_id;
+      return Array.from(merged.entries())
+        .filter(([id, recordMap]) => {
+          if (!matchesSearchQuery) return true;
+          const query = matchesSearchQuery.toLowerCase();
+          const records = Array.from(recordMap.values());
+          
+          switch (matchesSearchType) {
+            case 'contig':
+              return id.toString().includes(query);
+            case 'chromosome':
+              return records.some(r => 
+                r.ref_contig_id.toString().includes(query)
+              );
+            case 'confidence':
+              return records.some(r => 
+                r.confidence.toFixed(2).includes(query)
+              );
+            default:
+              return true;
+          }
         })
-      }));
+        .map(([id, recordMap]) => ({
+          qry_contig_id: id,
+          records: Array.from(recordMap.values()).sort((a, b) => {
+            if (a.file_index !== b.file_index) return a.file_index - b.file_index;
+            return a.ref_contig_id - b.ref_contig_id;
+          })
+        }));
     })();
 
     $: totalMatchesPages = Math.ceil(mergedMatches.length / matchesItemsPerPage);
@@ -96,6 +155,85 @@
     function goToMatchesPage(page: number) {
       matchesPage = Math.max(1, Math.min(page, totalMatchesPages));
     }
+
+    function startEditingOverviewPage() {
+      editingOverviewPage = true;
+      overviewPageInput = overviewPage.toString();
+    }
+
+    function startEditingMatchesPage() {
+      editingMatchesPage = true;
+      matchesPageInput = matchesPage.toString();
+    }
+
+    function submitOverviewPageJump() {
+      const pageNum = parseInt(overviewPageInput);
+      if (!isNaN(pageNum)) {
+        goToOverviewPage(pageNum);
+      }
+      editingOverviewPage = false;
+    }
+
+    function submitMatchesPageJump() {
+      const pageNum = parseInt(matchesPageInput);
+      if (!isNaN(pageNum)) {
+        goToMatchesPage(pageNum);
+      }
+      editingMatchesPage = false;
+    }
+
+    function handleOverviewPageKeydown(e: KeyboardEvent) {
+      if (e.key === 'Enter') {
+        submitOverviewPageJump();
+      } else if (e.key === 'Escape') {
+        editingOverviewPage = false;
+      }
+    }
+
+    function handleMatchesPageKeydown(e: KeyboardEvent) {
+      if (e.key === 'Enter') {
+        submitMatchesPageJump();
+      } else if (e.key === 'Escape') {
+        editingMatchesPage = false;
+      }
+    }
+
+    /**
+     * Set search type for overview
+     */
+    function setOverviewSearchType(type: SearchType) {
+      overviewSearchType = type;
+      overviewPage = 1;
+    }
+
+    /**
+     * Set search type for matches
+     */
+    function setMatchesSearchType(type: SearchType) {
+      matchesSearchType = type;
+      matchesPage = 1;
+    }
+
+    /**
+     * Get placeholder text based on search type
+     */
+    $: overviewPlaceholder = (() => {
+      switch (overviewSearchType) {
+        case 'contig': return 'Search by contig ID (number)...';
+        case 'chromosome': return 'Search by chromosome (example, "1-2" for genome 1 chromosome 2)...';
+        case 'confidence': return 'Search by confidence value (number)...';
+        default: return 'Search...';
+      }
+    })();
+
+    $: matchesPlaceholder = (() => {
+      switch (matchesSearchType) {
+        case 'contig': return 'Search by contig ID (number)...';
+        case 'chromosome': return 'Search by chromosome (number)...';
+        case 'confidence': return 'Search by confidence value (number)...';
+        default: return 'Search...';
+      }
+    })();
 </script>
 
 <div class="info">
@@ -114,6 +252,38 @@
   {#if matches.length > 0}
     <div class="section overview-section">
       <h2>Query Contig Overview ({queryContigStats.size} unique)</h2>
+      
+      <div class="search-container">
+        <div class="search-type-toggle">
+          <button 
+            class:active={overviewSearchType === 'contig'}
+            on:click={() => setOverviewSearchType('contig')}
+          >
+            Contig ID
+          </button>
+          <button 
+            class:active={overviewSearchType === 'chromosome'}
+            on:click={() => setOverviewSearchType('chromosome')}
+          >
+            Chromosome
+          </button>
+          <button 
+            class:active={overviewSearchType === 'confidence'}
+            on:click={() => setOverviewSearchType('confidence')}
+          >
+            Confidence
+          </button>
+        </div>
+        <div class="search-bar">
+          <input
+            type="text"
+            placeholder={overviewPlaceholder}
+            bind:value={overviewSearchQuery}
+            class="search-input"
+          />
+        </div>
+      </div>
+      
       <div class="overview-list">
         {#each paginatedOverview as [qryId, stat]}
           <div class="overview-item">
@@ -167,9 +337,32 @@
           >
             «
           </button>
-          <span class="page-info">
-            ({overviewPage} / {totalOverviewPages})
-          </span>
+          
+          {#if editingOverviewPage}
+            <input
+              type="text"
+              class="page-input"
+              bind:value={overviewPageInput}
+              on:keydown={handleOverviewPageKeydown}
+              on:blur={submitOverviewPageJump}
+              on:focus
+            />
+          {:else}
+            <span 
+              class="page-info" 
+              on:dblclick={startEditingOverviewPage}
+              role="button"
+              tabindex="0"
+              on:keydown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  startEditingOverviewPage();
+                }
+              }}
+            >
+              ({overviewPage} / {totalOverviewPages})
+            </span>
+          {/if}
+          
           <button 
             class="page-btn" 
             on:click={() => goToOverviewPage(overviewPage + 1)}
@@ -294,6 +487,38 @@
   {#if matches.length > 0}
     <div class="section">
       <h2>Chromosome Matches ({mergedMatches.length} unique contigs)</h2>
+      
+      <div class="search-container">
+        <div class="search-type-toggle">
+          <button 
+            class:active={matchesSearchType === 'contig'}
+            on:click={() => setMatchesSearchType('contig')}
+          >
+            Contig ID
+          </button>
+          <button 
+            class:active={matchesSearchType === 'chromosome'}
+            on:click={() => setMatchesSearchType('chromosome')}
+          >
+            Chromosome
+          </button>
+          <button 
+            class:active={matchesSearchType === 'confidence'}
+            on:click={() => setMatchesSearchType('confidence')}
+          >
+            Confidence
+          </button>
+        </div>
+        <div class="search-bar">
+          <input
+            type="text"
+            placeholder={matchesPlaceholder}
+            bind:value={matchesSearchQuery}
+            class="search-input"
+          />
+        </div>
+      </div>
+      
       <div class="match-list">
         {#each paginatedMatches as match}
           <div class="match-item">
@@ -335,9 +560,32 @@
           >
             «
           </button>
-          <span class="page-info">
-            ({matchesPage} / {totalMatchesPages})
-          </span>
+          
+          {#if editingMatchesPage}
+            <input
+              type="text"
+              class="page-input"
+              bind:value={matchesPageInput}
+              on:keydown={handleMatchesPageKeydown}
+              on:blur={submitMatchesPageJump}
+              on:focus
+            />
+          {:else}
+            <span 
+              class="page-info" 
+              on:dblclick={startEditingMatchesPage}
+              role="button"
+              tabindex="0"
+              on:keydown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  startEditingMatchesPage();
+                }
+              }}
+            >
+              ({matchesPage} / {totalMatchesPages})
+            </span>
+          {/if}
+          
           <button 
             class="page-btn" 
             on:click={() => goToMatchesPage(matchesPage + 1)}
@@ -391,6 +639,8 @@
     background: var(--bg-secondary);
     border-radius: 0.5rem;
     border: 1px solid var(--border-color);
+    max-width: 100%;
+    overflow: hidden;
   }
 
   h2 {
@@ -543,6 +793,99 @@
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+    border-radius: 0.375rem;
+  }
+
+  .page-info:hover {
+    background: var(--bg-hover);
+  }
+
+  .page-input {
+    width: 4rem;
+    padding: 0.5rem;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: 2px solid var(--accent-primary);
+    border-radius: 0.375rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  .page-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+
+  .search-container {
+    margin-bottom: 1rem;
+  }
+
+  .search-type-toggle {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .search-type-toggle button {
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .search-type-toggle button:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+  }
+
+  .search-type-toggle button.active {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+  }
+
+.search-bar {
+    position: relative;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    z-index: 1;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    border: 1px solid var(--border-color-dark);
+    border-radius: 0.375rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 1;
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    z-index: 2;
+  }
+
+  .search-input::placeholder {
+    color: var(--text-tertiary);
   }
 
   .filters-section {
@@ -674,6 +1017,22 @@
     border: 1px solid var(--border-color);
   }
 
+  .match-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+
+  .match-header strong {
+    color: var(--accent-primary);
+  }
+
+  .occurrence-count {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+  }
+
   .file-badge {
     padding: 0.25rem 0.5rem;
     margin-right: 0.5rem;
@@ -684,8 +1043,36 @@
     white-space: nowrap;
   }
 
+  .chr-info {
+    margin-right: 0.5rem;
+    color: var(--text-secondary);
+  }
+
+  .orientation-badge {
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-right: 0.5rem;
+  }
+
+  .orientation-badge.plus {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+  }
+
+  .orientation-badge.minus {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--error);
+  }
+
+  .confidence-value {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+  }
+
   .occurrence {
-    margin-top: 1.0rem;
+    margin-top: 0.8rem;
   }
 
   .occurrence-list {
@@ -729,6 +1116,13 @@
     .match-list {
       max-height: 360px;
     }
+    .search-type-toggle {
+      gap: 0.125rem;
+    }
+    .search-type-toggle button {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.7rem;
+    }
   }
 
   @media (max-width: 520px) {
@@ -756,6 +1150,14 @@
     .page-info {
       font-size: 0.8rem;
       padding: 0.4rem 0.6rem;
+    }
+    .search-type-toggle {
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .search-type-toggle button {
+      padding: 0.375rem 0.5rem;
+      font-size: 0.75rem;
     }
   }
 

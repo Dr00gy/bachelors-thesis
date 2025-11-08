@@ -48,7 +48,7 @@
   $: centerX = 200;
   $: centerY = 200;
   $: circumference = 2 * Math.PI * (radius - strokeWidth / 2);
-  $: showChromosomes = scale >= 1.2;
+  $: showChromosomes = scale >= 1.1;
 
   /**
    * Calculates maximum confidence value for normalization
@@ -613,6 +613,7 @@
     max-width: 100%;
     width: clamp(260px, 90vw, 420px);
     box-sizing: border-box;
+    z-index: 10;
   }
 
   .chart-svg {

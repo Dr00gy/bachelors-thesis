@@ -1,4 +1,0 @@
-#h XmapEntryID	QryContigID	RefContigID	QryStartPos	QryEndPos	RefStartPos	RefEndPos	Orientation	Confidence	HitEnum	QryLen	RefLen	LabelChannel	Alignment	MapWt	MaxOutlierKB	MaxLabels	noutliers
-#f int        	int        	int        	float      	float    	float      	float    	string     	float     	string 	float 	float 	int         	string   	float	float	int	int
-1	2001	1	0.0	3000.0	5000.0	155000.0	+	8.5	1M	3000.0	250000.0	1	(1,1)	1.0	0.0	1	0
-2	1001	13	0.0	3000.0	10000.0	30000.0	-	9.2	1M	3000.0	250000.0	1	(1,1)	1.0	0.0	1	0
