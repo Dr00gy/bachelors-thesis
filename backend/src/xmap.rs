@@ -201,7 +201,7 @@ pub fn stream_matches_multi(
         }
 
         let queue: Arc<SegQueue<Arc<Box<[(u32, Vec<Arc<XmapRecord>>)]>>>> = Arc::new(SegQueue::new());
-        let chunk_size = 100;
+        let chunk_size = 32;
         let mut temp_chunk = Vec::with_capacity(chunk_size);
 
         for entry in qry_groups_i.iter() {

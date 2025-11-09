@@ -108,7 +108,7 @@ pub async fn stream_xmap_matches(
         all_records_with_indices.into_boxed_slice()
     ));
 
-    let (mut writer, reader) = tokio::io::duplex(131072);
+    let (mut writer, reader) = tokio::io::duplex(1048576);
 
     let cache_key = file_hashes.into_boxed_slice();
     tokio::spawn(async move {
