@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { FileData, BackendMatch, DonutSegment, MatchedRecord } from './types';
+    import type { FileData, BackendMatch, DonutSegment, MatchedRecord } from '$lib/types';
 
     export let files: FileData[] = [];
     export let matches: BackendMatch[] = [];
