@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::borrow::Cow;
 use bytes::Bytes;
 
-use crate::xmap::{XmapCache, XmapFileSet, hash_content, stream_matches_multi};
+use crate::xmap::{XmapCache, XmapFileSet, hash_content, stream_matches_multi, ChromosomeInfo};
 
 /// Streams XMAP matches for uploaded files
 ///
@@ -51,6 +51,7 @@ pub async fn stream_xmap_matches(
             .unwrap());
     }
 
+    let mut chromosome_info_per_file: Vec<Vec<ChromosomeInfo>> = Vec::with_capacity(files.len());
     let mut file_hashes = Vec::with_capacity(files.len());
     let mut file_records = Vec::with_capacity(files.len());
 
@@ -60,7 +61,7 @@ pub async fn stream_xmap_matches(
         file_hashes.push(hash);
 
         let bytes_arc = Arc::new(bytes);
-        let records = tokio::task::spawn_blocking({
+        let (records, chr_lengths) = tokio::task::spawn_blocking({
             let cache = Arc::clone(&cache);
             let content = Arc::clone(&bytes_arc);
             move || {
@@ -71,6 +72,15 @@ pub async fn stream_xmap_matches(
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
             .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+        let mut chr_info = Vec::new();
+        for entry in chr_lengths.iter() {
+            chr_info.push(ChromosomeInfo {
+                ref_contig_id: *entry.key(),
+                ref_len: *entry.value(),
+            });
+        }
+        chromosome_info_per_file.push(chr_info);
 
         file_records.push(records);
     }
@@ -102,6 +112,11 @@ pub async fn stream_xmap_matches(
 
     let cache_key = file_hashes.into_boxed_slice();
     tokio::spawn(async move {
+        let chr_info_bytes = bincode::serialize(&chromosome_info_per_file).unwrap();
+        let chr_info_len = (chr_info_bytes.len() as u32).to_le_bytes();
+        if writer.write_all(&chr_info_len).await.is_err() { return; }
+        if writer.write_all(&chr_info_bytes).await.is_err() { return; }
+
         let rx = stream_matches_multi(fileset);
 
         while let Ok(match_data) = rx.recv() {

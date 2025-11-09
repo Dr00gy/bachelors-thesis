@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { BackendMatch } from '$lib/bincodeDecoder';
+  import type { BackendMatch, ChromosomeInfo } from '$lib/bincodeDecoder';
   import type { FileData, DonutSegment, FlowPath, ChromosomeDivision } from '$lib/types';
   import DonutInfo from './DonutInfo.svelte';
   import { donutFilterState } from '$lib/filterStateStore';
@@ -9,6 +9,7 @@
    */
   export let files: FileData[] = [];
   export let matches: BackendMatch[] = [];
+  export let chromosomeInfo: ChromosomeInfo[][] = [];
   export let showDuplicates = false;
 
   /**
@@ -133,32 +134,41 @@
   $: availableChromosomes = Array.from({ length: 23 }, (_, i) => (i + 1).toString());
 
   /**
-   * Calculates genome sizes from RefLen fields
+   * Calculates genome sizes from chromosome information
    */
   $: genomeSizes = (() => {
-    const chromosomesByGenome = new Map<number, Map<number, number>>();
+    const sizes = new Map<number, number>();
     
-    for (const match of matches) {
-      for (const record of match.records) {
-        const fileIdx = record.file_index;
-        const chrNum = record.ref_contig_id;
-        
-        if (!chromosomesByGenome.has(fileIdx)) {
-          chromosomesByGenome.set(fileIdx, new Map());
-        }
-        
-        const chromosomes = chromosomesByGenome.get(fileIdx)!;
-        
-        if (!chromosomes.has(chrNum)) {
-          chromosomes.set(chrNum, record.ref_len);
+    if (chromosomeInfo.length > 0) {
+      chromosomeInfo.forEach((chromosomes, fileIndex) => {
+        const totalSize = chromosomes.reduce((sum, chr) => sum + chr.ref_len, 0);
+        sizes.set(fileIndex, totalSize);
+      });
+    } else {
+      // fallback only gets refLen where there are matches
+      const chromosomesByGenome = new Map<number, Map<number, number>>();
+      
+      for (const match of matches) {
+        for (const record of match.records) {
+          const fileIdx = record.file_index;
+          const chrNum = record.ref_contig_id;
+          
+          if (!chromosomesByGenome.has(fileIdx)) {
+            chromosomesByGenome.set(fileIdx, new Map());
+          }
+          
+          const chromosomes = chromosomesByGenome.get(fileIdx)!;
+          
+          if (!chromosomes.has(chrNum)) {
+            chromosomes.set(chrNum, record.ref_len);
+          }
         }
       }
-    }
-    
-    const sizes = new Map<number, number>();
-    for (const [fileIdx, chromosomes] of chromosomesByGenome.entries()) {
-      const totalSize = Array.from(chromosomes.values()).reduce((sum, len) => sum + len, 0);
-      sizes.set(fileIdx, totalSize);
+      
+      for (const [fileIdx, chromosomes] of chromosomesByGenome.entries()) {
+        const totalSize = Array.from(chromosomes.values()).reduce((sum, len) => sum + len, 0);
+        sizes.set(fileIdx, totalSize);
+      }
     }
     
     files.forEach((_, idx) => {

@@ -8,7 +8,7 @@
   import TabNav from './TabNav.svelte';
   import DarkModeToggle from './DarkModeToggle.svelte';
   import AreaAnalysis from './AreaAnalysis.svelte'; 
-  import { fetchMatches, type BackendMatch } from '$lib/bincodeDecoder';
+  import { fetchMatches, type BackendMatch, type ChromosomeInfo } from '$lib/bincodeDecoder';
   import { darkMode } from '$lib/darkModeStore';
 
   /**
@@ -25,6 +25,7 @@
    */
   let files: FileData[] = [];
   let matches: BackendMatch[] = [];
+  let chromosomeInfo: ChromosomeInfo[][] = [];
   let isLoading = false;
   let error = '';
   let matchCount = 0;
@@ -61,6 +62,7 @@
     isLoading = true;
     error = '';
     matches = [];
+    chromosomeInfo = [];
     matchCount = 0;
     hasUploadedFiles = false;
 
@@ -71,7 +73,7 @@
     }));
 
     try {
-      matches = await fetchMatches(
+      const response = await fetchMatches(
         Array.from(fileList),
         (count) => {
           matchCount = count;
@@ -79,6 +81,8 @@
         abortController.signal
       );
 
+      matches = response.matches;
+      chromosomeInfo = response.chromosomeInfo;
       updateFileCounts();
       hasUploadedFiles = true;
     } catch (err) {
@@ -103,6 +107,7 @@
   function resetUpload() {
     files = [];
     matches = [];
+    chromosomeInfo = [];
     error = '';
     matchCount = 0;
     hasUploadedFiles = false;
@@ -183,7 +188,7 @@
 
       {#if hasUploadedFiles && !isLoading}
         <DisplayControls bind:showDuplicates bind:scale />
-        <DonutVisualisation {files} {matches} {showDuplicates} {scale} />
+        <DonutVisualisation {files} {matches} {chromosomeInfo} {showDuplicates} {scale} />
       {/if}
     </div>
   {:else if activeTab === 'analysis'}

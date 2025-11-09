@@ -1,4 +1,12 @@
 /**
+ * Represents chromosome information with length
+ */
+export interface ChromosomeInfo {
+  ref_contig_id: number;
+  ref_len: number;
+}
+
+/**
  * Represents a single matched record from XMAP data
  */
 export interface MatchedRecord {
@@ -20,6 +28,14 @@ export interface BackendMatch {
   qry_contig_id: number;
   file_indices: number[];
   records: MatchedRecord[];
+}
+
+/**
+ * Represents the complete response from the backend
+ */
+export interface BackendResponse {
+  chromosomeInfo: ChromosomeInfo[][];
+  matches: BackendMatch[];
 }
 
 /**
@@ -89,7 +105,6 @@ class ByteReader {
     else if ((first & 0xF8) === 0xF0) length = 4;
     else throw new Error(`Invalid UTF-8 start byte: ${first}`);
 
-    // read remaining bytes if any
     const bytes = new Uint8Array(length);
     bytes[0] = first;
     for (let i = 1; i < length; i++) {
@@ -108,6 +123,24 @@ class ByteReader {
   getPos(): number {
     return this.pos;
   }
+}
+
+/**
+ * Decodes chromosome information from binary data
+ * @param reader - ByteReader instance positioned at chromosome info start
+ * @returns Decoded ChromosomeInfo array
+ */
+function decodeChromosomeInfo(reader: ByteReader): ChromosomeInfo[] {
+  const length = Number(reader.readU64());
+  const chromosomes: ChromosomeInfo[] = [];
+
+  for (let i = 0; i < length; i++) {
+    const ref_contig_id = reader.readU8();
+    const ref_len = reader.readF64();
+    chromosomes.push({ ref_contig_id, ref_len });
+  }
+
+  return chromosomes;
 }
 
 /**
@@ -180,11 +213,11 @@ function decodeBackendMatch(bytes: Uint8Array): BackendMatch {
 }
 
 /**
- * Processes streaming response and yields decoded matches
+ * Processes streaming response and yields decoded chromosome info and matches
  * @param response - Fetch Response object with streaming body
- * @returns AsyncGenerator yielding BackendMatch objects
+ * @returns AsyncGenerator yielding BackendResponse object
  */
-export async function* processMatchStream(response: Response): AsyncGenerator<BackendMatch> {
+export async function* processMatchStream(response: Response): AsyncGenerator<BackendResponse> {
   const reader = response.body?.getReader();
   if (!reader) {
     throw new Error('No response body available');
@@ -192,6 +225,7 @@ export async function* processMatchStream(response: Response): AsyncGenerator<Ba
 
   let buffer = new Uint8Array(0);
   let messageCount = 0;
+  let chromosomeInfo: ChromosomeInfo[][] | null = null;
 
   try {
     while (true) {
@@ -212,7 +246,7 @@ export async function* processMatchStream(response: Response): AsyncGenerator<Ba
       while (buffer.length >= 4) {
         const length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
         
-        if (length > 10000) {
+        if (length > 1000000) {
           throw new Error(`Invalid message length: ${length}`);
         }
 
@@ -224,9 +258,19 @@ export async function* processMatchStream(response: Response): AsyncGenerator<Ba
         buffer = buffer.slice(4 + length);
 
         try {
-          const match = decodeBackendMatch(messageBytes);
-          messageCount++;
-          yield match;
+          if (!chromosomeInfo) {
+            const reader = new ByteReader(messageBytes);
+            chromosomeInfo = [];
+            const num_files = Number(reader.readU64());
+            for (let i = 0; i < num_files; i++) {
+              chromosomeInfo.push(decodeChromosomeInfo(reader));
+            }
+            yield { chromosomeInfo, matches: [] };
+          } else {
+            const match = decodeBackendMatch(messageBytes);
+            messageCount++;
+            yield { chromosomeInfo, matches: [match] };
+          }
         } catch (error) {
           console.error(`Failed to decode message ${messageCount + 1}:`, error);
         }
@@ -242,13 +286,13 @@ export async function* processMatchStream(response: Response): AsyncGenerator<Ba
  * @param files - Array of XMAP File objects (2-3 files)
  * @param onProgress - Optional progress callback
  * @param signal - Optional AbortSignal for cancellation
- * @returns Promise resolving to array of BackendMatch objects
+ * @returns Promise resolving to BackendResponse object
  */
 export async function fetchMatches(
   files: File[],
   onProgress?: (count: number) => void,
   signal?: AbortSignal
-): Promise<BackendMatch[]> {
+): Promise<BackendResponse> {
   if (files.length < 2 || files.length > 3) {
     throw new Error('Please provide 2-3 XMAP files');
   }
@@ -269,17 +313,24 @@ export async function fetchMatches(
   }
 
   const matches: BackendMatch[] = [];
+  let chromosomeInfo: ChromosomeInfo[][] = [];
 
-  for await (const match of processMatchStream(response)) {
-    matches.push(match);
-    if (onProgress) {
-      onProgress(matches.length);
+  for await (const responseData of processMatchStream(response)) {
+    if (responseData.chromosomeInfo.length > 0 && chromosomeInfo.length === 0) {
+      chromosomeInfo = responseData.chromosomeInfo;
+    }
+    if (responseData.matches.length > 0) {
+      matches.push(...responseData.matches);
+      if (onProgress) {
+        onProgress(matches.length);
+      }
     }
   }
 
-  return matches;
+  return { chromosomeInfo, matches };
 }
 
 export const __testUtils = {
   decodeBackendMatch,
+  decodeChromosomeInfo,
 };

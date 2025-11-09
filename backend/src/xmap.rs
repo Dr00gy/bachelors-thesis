@@ -20,6 +20,13 @@ pub struct XmapRecord {
     pub ref_len: f64,
 }
 
+/// Represents chromosome information with length
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChromosomeInfo {
+    pub ref_contig_id: u8,
+    pub ref_len: f64,
+}
+
 /// Represents a match between multiple XMAP records
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XmapMatch {
@@ -52,8 +59,9 @@ pub struct MatchedRecord {
 ///
 /// # Format
 /// Expects tab-separated values with specific column ordering
-pub fn parse_xmap_file(content: &str) -> Result<Arc<DashMap<u32, Arc<XmapRecord>>>, String> {
+pub fn parse_xmap_file(content: &str) -> Result<(Arc<DashMap<u32, Arc<XmapRecord>>>, Arc<DashMap<u8, f64>>), String> {
     let records = DashMap::new();
+    let chromosome_lengths = DashMap::new();
 
     content
         .par_lines()
@@ -64,24 +72,29 @@ pub fn parse_xmap_file(content: &str) -> Result<Arc<DashMap<u32, Arc<XmapRecord>
                 return Ok(());
             }
 
+            let ref_contig_id: u8 = fields[2].parse().map_err(|e| format!("Parse RefContigID: {}", e))?;
+            let ref_len: f64 = fields[11].parse().map_err(|e| format!("Parse RefLen: {}", e))?;
+
+            chromosome_lengths.insert(ref_contig_id, ref_len);
+
             let record = Arc::new(XmapRecord {
                 xmap_entry_id: fields[0].parse().map_err(|e| format!("Parse XmapEntryID: {}", e))?,
                 qry_contig_id: fields[1].parse().map_err(|e| format!("Parse QryContigID: {}", e))?,
-                ref_contig_id: fields[2].parse().map_err(|e| format!("Parse RefContigID: {}", e))?,
+                ref_contig_id,
                 qry_start_pos: fields[3].parse().map_err(|e| format!("Parse QryStartPos: {}", e))?,
                 qry_end_pos: fields[4].parse().map_err(|e| format!("Parse QryEndPos: {}", e))?,
                 ref_start_pos: fields[5].parse().map_err(|e| format!("Parse RefStartPos: {}", e))?,
                 ref_end_pos: fields[6].parse().map_err(|e| format!("Parse RefEndPos: {}", e))?,
                 orientation: fields[7].chars().next().unwrap_or('+'),
                 confidence: fields[8].parse().map_err(|e| format!("Parse Confidence: {}", e))?,
-                ref_len: fields[11].parse().map_err(|e| format!("Parse RefLen: {}", e))?,
+                ref_len,
             });
 
             records.insert(record.xmap_entry_id, Arc::clone(&record));
             Ok(())
         })?;
 
-    Ok(Arc::new(records))
+    Ok((Arc::new(records), Arc::new(chromosome_lengths)))
 }
 
 /// Builds index mapping query contig IDs to their records
@@ -271,6 +284,7 @@ pub fn stream_matches_multi(
 /// Cache manager for XMAP parsing and matching results
 pub struct XmapCache {
     pub parsed_files: Arc<DashMap<u64, Arc<DashMap<u32, Arc<XmapRecord>>>>>,
+    pub chromosome_lengths: Arc<DashMap<u64, Arc<DashMap<u8, f64>>>>,
     pub indices: Arc<DashMap<u64, Arc<DashMap<u32, Arc<DashMap<u32, Arc<XmapRecord>>>>>>>,
     pub match_cache: Arc<DashMap<Box<[u64]>, Arc<DashMap<u64, Arc<XmapMatch>>>>>,
 }
@@ -280,6 +294,7 @@ impl XmapCache {
     pub fn new() -> Self {
         Self {
             parsed_files: Arc::new(DashMap::new()),
+            chromosome_lengths: Arc::new(DashMap::new()),
             indices: Arc::new(DashMap::new()),
             match_cache: Arc::new(DashMap::new()),
         }
@@ -290,14 +305,17 @@ impl XmapCache {
     /// # Arguments
     /// * `hash` - Content hash for caching
     /// * `content` - XMAP file content to parse
-    pub fn get_or_parse(&self, hash: u64, content: &str) -> Result<Arc<DashMap<u32, Arc<XmapRecord>>>, String> {
-        if let Some(cached) = self.parsed_files.get(&hash) {
-            return Ok(Arc::clone(cached.value()));
+    pub fn get_or_parse(&self, hash: u64, content: &str) -> Result<(Arc<DashMap<u32, Arc<XmapRecord>>>, Arc<DashMap<u8, f64>>), String> {
+        if let Some(cached_records) = self.parsed_files.get(&hash) {
+            if let Some(cached_lengths) = self.chromosome_lengths.get(&hash) {
+                return Ok((Arc::clone(cached_records.value()), Arc::clone(cached_lengths.value())));
+            }
         }
 
-        let records = parse_xmap_file(content)?;
+        let (records, chr_lengths) = parse_xmap_file(content)?;
         self.parsed_files.insert(hash, Arc::clone(&records));
-        Ok(records)
+        self.chromosome_lengths.insert(hash, Arc::clone(&chr_lengths));
+        Ok((records, chr_lengths))
     }
 
     /// Gets index from cache or builds new index
@@ -367,8 +385,9 @@ mod tests {
 
     #[test]
     fn test_parse_xmap_file() {
-        let records = parse_xmap_file(sample_xmap_content()).unwrap();
+        let (records, chr_lengths) = parse_xmap_file(sample_xmap_content()).unwrap();
         assert_eq!(records.len(), 3);
+        assert_eq!(chr_lengths.len(), 2);
 
         let rec1 = records.get(&1).unwrap();
         assert_eq!(rec1.qry_contig_id, 4881976);
@@ -380,7 +399,7 @@ mod tests {
 
     #[test]
     fn test_build_index() {
-        let records = parse_xmap_file(sample_xmap_content()).unwrap();
+        let (records, _) = parse_xmap_file(sample_xmap_content()).unwrap();
         let index = build_index(records);
         assert_eq!(index.len(), 2);
 
@@ -398,8 +417,8 @@ mod tests {
 10	100	3	1500.0	2500.0	9000.0	10000.0	+	16.0	1M	2500.0	250000.0
 11	200	4	3500.0	4500.0	11000.0	12000.0	-	15.5	1M	4500.0	250000.0"#;
 
-        let file1_records = parse_xmap_file(file1_content).unwrap();
-        let file2_records = parse_xmap_file(file2_content).unwrap();
+        let (file1_records, _) = parse_xmap_file(file1_content).unwrap();
+        let (file2_records, _) = parse_xmap_file(file2_content).unwrap();
 
         let fileset = Arc::new(XmapFileSet::new(
             vec![file1_records, file2_records].into_boxed_slice()
@@ -428,9 +447,9 @@ mod tests {
         let file3_content = r#"#h XmapEntryID	QryContigID	RefContigID	QryStartPos	QryEndPos	RefStartPos	RefEndPos	Orientation	Confidence	HitEnum	QryLen	RefLen
 20	100	3	2000.0	3000.0	9000.0	10000.0	-	17.0	1M	3000.0	250000.0"#;
 
-        let file1_records = parse_xmap_file(file1_content).unwrap();
-        let file2_records = parse_xmap_file(file2_content).unwrap();
-        let file3_records = parse_xmap_file(file3_content).unwrap();
+        let (file1_records, _) = parse_xmap_file(file1_content).unwrap();
+        let (file2_records, _) = parse_xmap_file(file2_content).unwrap();
+        let (file3_records, _) = parse_xmap_file(file3_content).unwrap();
 
         let fileset = Arc::new(XmapFileSet::new(
             vec![file1_records, file2_records, file3_records].into_boxed_slice()
