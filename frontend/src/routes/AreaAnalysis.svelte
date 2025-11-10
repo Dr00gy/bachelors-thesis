@@ -296,9 +296,9 @@
     currentWindowIndex < totalWindows - 1;
 
   /**
-   * Available chromosomes (1-23)
+   * Available chromosomes (1-24)
    */
-  const chromosomes = Array.from({ length: 23 }, (_, i) => i + 1);
+  const chromosomes = Array.from({ length: 24 }, (_, i) => i + 1);
 
   /**
    * Resets window position when chromosome changes

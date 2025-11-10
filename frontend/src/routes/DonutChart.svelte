@@ -129,9 +129,9 @@
   }));
 
   /**
-   * Available chromosomes (1-22 + X)
+   * Available chromosomes (1-22 + X and Y)
    */
-  $: availableChromosomes = Array.from({ length: 23 }, (_, i) => (i + 1).toString());
+  $: availableChromosomes = Array.from({ length: 24 }, (_, i) => (i + 1).toString());
 
   /**
    * Calculates genome sizes from chromosome information
@@ -224,9 +224,9 @@
     const divisions = [];
     const segmentRange = seg.endAngle - seg.startAngle;
     
-    for (let i = 0; i < 23; i++) {
-      const chrStart = seg.startAngle + (segmentRange * i / 23);
-      const chrEnd = seg.startAngle + (segmentRange * (i + 1) / 23);
+    for (let i = 0; i < 24; i++) {
+      const chrStart = seg.startAngle + (segmentRange * i / 24);
+      const chrEnd = seg.startAngle + (segmentRange * (i + 1) / 24);
       const chrMid = (chrStart + chrEnd) / 2;
       
       divisions.push({
