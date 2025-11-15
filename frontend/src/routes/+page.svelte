@@ -8,43 +8,36 @@
   import TabNav from './TabNav.svelte';
   import DarkModeToggle from './DarkModeToggle.svelte';
   import AreaAnalysis from './AreaAnalysis.svelte'; 
-  import { fetchMatches, type BackendMatch, type ChromosomeInfo } from '$lib/bincodeDecoder';
+  import { processMatchStream, type BackendMatch, type ChromosomeInfo } from '$lib/bincodeDecoder';
   import { darkMode } from '$lib/darkModeStore';
 
-  /**
-   * Represents file metadata for the application
-   */
   interface FileData {
     name: string;
     rows: number;
     color: string;
   }
 
-  /**
-   * Application state
-   */
   let files: FileData[] = [];
   let matches: BackendMatch[] = [];
   let chromosomeInfo: ChromosomeInfo[][] = [];
   let isLoading = false;
+  let isStreaming = false;
   let error = '';
   let matchCount = 0;
   let abortController: AbortController | null = null;
   let showDuplicates = false;
   let activeTab: 'visualization' | 'analysis' = 'visualization';
   let hasUploadedFiles = false;
+  let hasChromosomeInfo = false;
+  let streamComplete = false;
   let scale = 1.0;
 
-  /**
-   * Initialize dark mode on mount
-   */
   onMount(() => {
     document.documentElement.classList.toggle('dark', $darkMode);
   });
 
   /**
-   * Handles file upload and match processing
-   * @param fileList - List of uploaded XMAP files
+   * Handles file upload with streaming and progressive rendering
    */
   async function handleFileUpload(fileList: FileList) {
     if (!fileList || fileList.length === 0) return;
@@ -60,11 +53,14 @@
 
     abortController = new AbortController();
     isLoading = true;
+    isStreaming = true;
+    streamComplete = false;
     error = '';
     matches = [];
     chromosomeInfo = [];
     matchCount = 0;
     hasUploadedFiles = false;
+    hasChromosomeInfo = false;
 
     files = Array.from(fileList).map((file, i) => ({
       name: file.name,
@@ -73,18 +69,38 @@
     }));
 
     try {
-      const response = await fetchMatches(
-        Array.from(fileList),
-        (count) => {
-          matchCount = count;
-        },
-        abortController.signal
-      );
+      const formData = new FormData();
+      Array.from(fileList).forEach((file, i) => {
+        formData.append(`file${i}`, file);
+      });
 
-      matches = response.matches;
-      chromosomeInfo = response.chromosomeInfo;
-      updateFileCounts();
-      hasUploadedFiles = true;
+      const response = await fetch('http://localhost:8080/api/match', {
+        method: 'POST',
+        body: formData,
+        signal: abortController.signal
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+      }
+
+      // W/ lazy streaming, first chunk contains chromosome info
+      for await (const responseData of processMatchStream(response)) {
+        if (responseData.chromosomeInfo.length > 0 && chromosomeInfo.length === 0) {
+          chromosomeInfo = responseData.chromosomeInfo;
+          hasChromosomeInfo = true;
+          hasUploadedFiles = true;
+          isLoading = false;
+        }
+        
+        if (responseData.matches.length > 0) {
+          matches = [...matches, ...responseData.matches];
+          matchCount = matches.length;
+          updateFileCounts();
+        }
+      }
+
+      streamComplete = true;
     } catch (err) {
       if (err instanceof Error) {
         if (err.name === 'AbortError') {
@@ -97,13 +113,11 @@
       }
     } finally {
       isLoading = false;
+      isStreaming = false;
       abortController = null;
     }
   }
 
-  /**
-   * Resets the application state for new upload
-   */
   function resetUpload() {
     files = [];
     matches = [];
@@ -111,15 +125,14 @@
     error = '';
     matchCount = 0;
     hasUploadedFiles = false;
+    hasChromosomeInfo = false;
+    streamComplete = false;
     if (abortController) {
       abortController.abort();
       abortController = null;
     }
   }
 
-  /**
-   * Updates file row counts based on match data
-   */
   function updateFileCounts() {
     const fileCounts = new Map<number, number>();
 
@@ -136,9 +149,6 @@
     }));
   }
 
-  /**
-   * Cancels ongoing file upload
-   */
   function cancelUpload() {
     if (abortController) {
       abortController.abort();
@@ -181,20 +191,58 @@
       {#if isLoading}
         <div class="loading-container">
           <LoadingSpinner />
-          <p class="loading-text">Processing {matchCount} matches...</p>
+          <p class="loading-text">Initializing stream...</p>
           <button class="cancel-button" on:click={cancelUpload}>Cancel</button>
         </div>
       {/if}
 
-      {#if hasUploadedFiles && !isLoading}
+      {#if isStreaming && hasChromosomeInfo}
+        <div class="streaming-banner">
+          <div class="streaming-spinner"></div>
+          <span>Streaming matches... {matchCount} loaded</span>
+          {#if !streamComplete}
+            <button class="cancel-button-small" on:click={cancelUpload}>Cancel</button>
+          {:else}
+            <span class="complete-badge">✓ Complete</span>
+          {/if}
+        </div>
+      {/if}
+      {#if hasChromosomeInfo}
         <DisplayControls bind:showDuplicates/>
-        <DonutVisualisation {files} {matches} {chromosomeInfo} {showDuplicates} />
+        <DonutVisualisation 
+          {files} 
+          {matches} 
+          {chromosomeInfo} 
+          {showDuplicates} 
+          isStreaming={isStreaming && !streamComplete}
+        />
+        
+        {#if isStreaming && !streamComplete}
+          <div class="live-update-notice">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="3" fill="currentColor" opacity="0.3">
+                <animate attributeName="r" values="3;6;3" dur="1.5s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.3;0;0.3" dur="1.5s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="8" cy="8" r="2" fill="currentColor"/>
+            </svg>
+            Visualization updating in real-time with the data stream ...
+          </div>
+        {/if}
       {/if}
     </div>
   {:else if activeTab === 'analysis'}
     <div class="tab-content">
       {#if matches.length > 0}
         <AreaAnalysis {matches} {files} />
+      {:else if isStreaming}
+        <div class="placeholder-tab">
+          <h2>Analysis Tab</h2>
+          <div class="streaming-placeholder">
+            <LoadingSpinner />
+            <p>Loading data... {matchCount} matches so far</p>
+          </div>
+        </div>
       {:else}
         <div class="placeholder-tab">
           <h2>Analysis Tab</h2>
@@ -328,7 +376,54 @@
     font-weight: 500;
   }
 
-  .cancel-button {
+  .streaming-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: var(--accent-light);
+    border-radius: 0.5rem;
+    border: 1px solid var(--accent-primary);
+    margin-bottom: 1.5rem;
+    animation: slideDown 0.3s ease-out;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .streaming-spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--accent-primary);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .complete-badge {
+    margin-left: auto;
+    padding: 0.25rem 0.75rem;
+    background: var(--success);
+    color: white;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .cancel-button,
+  .cancel-button-small {
     padding: 0.5rem 1.5rem;
     background: var(--error);
     color: white;
@@ -339,8 +434,29 @@
     transition: background 0.2s;
   }
 
-  .cancel-button:hover {
+  .cancel-button-small {
+    padding: 0.375rem 1rem;
+    font-size: 0.875rem;
+    margin-left: auto;
+  }
+
+  .cancel-button:hover,
+  .cancel-button-small:hover {
     background: #dc2626;
+  }
+
+  .live-update-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-accent);
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+    margin-top: 1rem;
+    color: var(--accent-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
   }
 
   .placeholder-tab {
@@ -359,6 +475,14 @@
   .placeholder-tab p {
     color: var(--text-secondary);
     margin-bottom: 0.5rem;
+  }
+
+  .streaming-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
   }
 
   .data-status {

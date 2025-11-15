@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, afterUpdate } from 'svelte';
+  import { onMount, afterUpdate, onDestroy } from 'svelte';
   import * as d3 from 'd3';
   import type { BackendMatch, ChromosomeInfo } from '$lib/bincodeDecoder';
   import type { FileData } from '$lib/types';
@@ -11,6 +11,7 @@
   export let chromosomeInfo: ChromosomeInfo[][] = [];
   export let showDuplicates = false;
   export let scale = 1.1;
+  export let isStreaming = false;
 
   let svgElement: SVGSVGElement;
   let containerElement: HTMLDivElement;
@@ -18,6 +19,13 @@
   let currentZoom = 1;
   let currentTranslateX = 0;
   let currentTranslateY = 0;
+
+  /**
+   * Progressive rendering state
+   */
+  let isInitialized = false;
+  let lastMatchCount = 0;
+  let updateThrottleTimer: any = null;
 
   /**
    * Filter state from store
@@ -192,12 +200,17 @@
   $: flowPaths = (() => {
     const flows: any[] = [];
     const seenSelf = new Set<string>();
+    const maxFlowsToProcess = 1000;
+    let processedCount = 0;
 
     for (const match of matches) {
+      if (processedCount >= maxFlowsToProcess) break;
       if (match.records.length < 2) continue;
 
       for (let i = 0; i < match.records.length; i++) {
         for (let j = i + 1; j < match.records.length; j++) {
+          if (processedCount >= maxFlowsToProcess) break;
+          
           const from = match.records[i];
           const to = match.records[j];
           if (from.file_index >= files.length || to.file_index >= files.length) continue;
@@ -226,6 +239,8 @@
             fromRecord: from,
             toRecord: to
           });
+          
+          processedCount++;
         }
       }
     }
@@ -368,7 +383,8 @@
       svg.call(zoom.transform as any, d3.zoomIdentity.translate(currentTranslateX, currentTranslateY).scale(currentZoom));
     }
 
-    setupChartElements();
+    isInitialized = true;
+    updateChart();
   }
 
   /**
@@ -377,6 +393,27 @@
   function setupChartElements() {
     if (!mainGroup) return;
     updateChart();
+  }
+
+  /**
+   * Throttled update scheduling for progressive rendering
+   */
+  function scheduleUpdate() {
+    if (updateThrottleTimer) {
+      clearTimeout(updateThrottleTimer);
+    }
+    
+    updateThrottleTimer = setTimeout(() => {
+      updateChart();
+    }, 100);
+  }
+
+  /**
+   * Track match count changes for progressive updates
+   */
+  $: if (isInitialized && matches.length !== lastMatchCount) {
+    lastMatchCount = matches.length;
+    scheduleUpdate();
   }
 
   /**
@@ -558,15 +595,23 @@
   }
 
   afterUpdate(() => {
-    if (mainGroup) {
-      updateChart();
-    } else {
+    if (!isInitialized && chromosomeInfo.length > 0 && files.length > 0) {
       initializeChart();
+    } else if (mainGroup) {
+      updateChart();
     }
   });
 
   onMount(() => {
-    initializeChart();
+    if (chromosomeInfo.length > 0 && files.length > 0) {
+      initializeChart();
+    }
+  });
+
+  onDestroy(() => {
+    if (updateThrottleTimer) {
+      clearTimeout(updateThrottleTimer);
+    }
   });
 </script>
 
@@ -581,9 +626,16 @@
       </div>
     </div>
 
-    {#if !files.length || !matches.length}
+    {#if !files.length || !chromosomeInfo.length}
       <div class="no-data">
-        No data to display. Upload XMAP files to begin.
+        {#if !files.length}
+          No data to display. Upload XMAP files to begin.
+        {:else}
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <span>Initializing visualization...</span>
+          </div>
+        {/if}
       </div>
     {:else}
       <div class="chart-wrapper">
@@ -602,6 +654,18 @@
         <div class="zoom-hint">
           Scroll to zoom • Drag to pan
         </div>
+        {#if isStreaming}
+          <div class="streaming-notice">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="3" fill="currentColor" opacity="0.3">
+                <animate attributeName="r" values="3;6;3" dur="1.5s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.3;0;0.3" dur="1.5s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="8" cy="8" r="2" fill="currentColor"/>
+            </svg>
+            Updating visualization as data streams in...
+          </div>
+        {/if}
       </div>
     {/if}
   </div>
@@ -733,6 +797,52 @@
     font-size: 0.7rem;
     color: var(--text-tertiary);
     text-align: center;
+  }
+
+  .no-data {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem;
+    background: var(--bg-secondary);
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    min-height: 300px;
+  }
+
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--accent-primary);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .streaming-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: var(--accent-light);
+    border-radius: 0.375rem;
+    border: 1px solid var(--accent-primary);
+    color: var(--accent-primary);
+    font-size: 0.8rem;
+    font-weight: 500;
   }
 
   @media (max-width: 1024px) {

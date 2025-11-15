@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { FileData, BackendMatch, DonutSegment, MatchedRecord } from '$lib/types';
     import { searchStore } from '$lib/searchStore';
+    import { onDestroy } from 'svelte';
 
     export let files: FileData[] = [];
     export let matches: BackendMatch[] = [];
@@ -274,7 +275,6 @@
     /**
      * Cleanup store subscription
      */
-    import { onDestroy } from 'svelte';
     onDestroy(() => {
         unsubscribe();
     });
@@ -899,7 +899,7 @@
     border-color: var(--accent-primary);
   }
 
-.search-bar {
+  .search-bar {
     position: relative;
     max-width: 100%;
     width: 100%;

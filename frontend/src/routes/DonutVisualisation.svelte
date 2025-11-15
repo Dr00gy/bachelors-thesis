@@ -20,11 +20,13 @@
    * @prop chromosomeInfo - Chromosome length information
    * @prop showDuplicates - Whether to include intra-genome flows
    * @prop scale - Visualization scale factor
+   * @prop isStreaming - Whether data is still streaming from backend
    */
   export let files: FileData[] = [];
   export let matches: BackendMatch[] = [];
   export let chromosomeInfo: ChromosomeInfo[][] = [];
   export let showDuplicates = false;
+  export let isStreaming = false;
 </script>
 
-<D3DonutChart {files} {matches} {chromosomeInfo} {showDuplicates}/>
+<D3DonutChart {files} {matches} {chromosomeInfo} {showDuplicates} {isStreaming}/>
