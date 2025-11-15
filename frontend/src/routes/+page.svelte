@@ -187,8 +187,8 @@
       {/if}
 
       {#if hasUploadedFiles && !isLoading}
-        <DisplayControls bind:showDuplicates bind:scale />
-        <DonutVisualisation {files} {matches} {chromosomeInfo} {showDuplicates} {scale} />
+        <DisplayControls bind:showDuplicates/>
+        <DonutVisualisation {files} {matches} {chromosomeInfo} {showDuplicates} />
       {/if}
     </div>
   {:else if activeTab === 'analysis'}

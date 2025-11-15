@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { BackendMatch } from '../lib/bincodeDecoder';
   import type { FileData } from '../lib/types';
+  import { searchStore } from '../lib/searchStore';
+  import { areaAnalysisFilterState } from '../lib/filterStateStore';
 
   /**
    * Component props
@@ -9,15 +11,71 @@
   export let files: FileData[] = [];
 
   /**
-   * Filter and display state
+   * Filter and display state from store
    */
   let selectedFiles: number[] = [0];
   let selectedChromosome = 1;
   let windowSize = 100000;
   let currentWindowIndex = 0;
   let hoveredContig: any = null;
+  
+  /**
+   * Search state from store
+   */
   let searchQuery = '';
   
+  /**
+   * Subscribe to stores
+   */
+  const unsubscribeSearch = searchStore.subscribe(state => {
+    searchQuery = state.areaSearchQuery;
+  });
+
+  const unsubscribeFilter = areaAnalysisFilterState.subscribe(state => {
+    selectedFiles = state.selectedFiles;
+    selectedChromosome = state.selectedChromosome;
+    windowSize = state.windowSize;
+    currentWindowIndex = state.currentWindowIndex;
+  });
+
+  /**
+   * Update search store when local value changes
+   */
+  $: if (searchQuery !== $searchStore.areaSearchQuery) {
+    searchStore.update(state => ({ ...state, areaSearchQuery: searchQuery }));
+  }
+
+  /**
+   * Update filter store when local values change
+   */
+  $: if (JSON.stringify(selectedFiles) !== JSON.stringify($areaAnalysisFilterState.selectedFiles)) {
+    areaAnalysisFilterState.update(state => ({ 
+      ...state, 
+      selectedFiles 
+    }));
+  }
+
+  $: if (selectedChromosome !== $areaAnalysisFilterState.selectedChromosome) {
+    areaAnalysisFilterState.update(state => ({ 
+      ...state, 
+      selectedChromosome 
+    }));
+  }
+
+  $: if (windowSize !== $areaAnalysisFilterState.windowSize) {
+    areaAnalysisFilterState.update(state => ({ 
+      ...state, 
+      windowSize 
+    }));
+  }
+
+  $: if (currentWindowIndex !== $areaAnalysisFilterState.currentWindowIndex) {
+    areaAnalysisFilterState.update(state => ({ 
+      ...state, 
+      currentWindowIndex 
+    }));
+  }
+
   /**
    * Window jump editing state
    */
@@ -196,8 +254,6 @@
     const contigRecords = records.filter(record => record.qry_contig_id === contigId);
     
     if (contigRecords.length === 0) return;
-    
-    // finds all windows that contain this contig and jumps to first occurence
     filteredWindows = findWindowsWithContig(contigId, records, chromosomeRange, windowSize);
     isSearching = true;
     
@@ -337,6 +393,15 @@
       editingWindowPage = false;
     }
   }
+
+  /**
+   * Cleanup store subscriptions
+   */
+  import { onDestroy } from 'svelte';
+  onDestroy(() => {
+    unsubscribeSearch();
+    unsubscribeFilter();
+  });
 </script>
 
 <div class="analysis-container">

@@ -10,7 +10,7 @@
 </script>
 
 <script lang="ts">
-  import DonutChart from './DonutChart.svelte';
+  import D3DonutChart from './D3DonutChart.svelte';
   import type { BackendMatch, ChromosomeInfo } from '$lib/bincodeDecoder';
 
   /**
@@ -25,7 +25,6 @@
   export let matches: BackendMatch[] = [];
   export let chromosomeInfo: ChromosomeInfo[][] = [];
   export let showDuplicates = false;
-  export let scale = 1.0;
 </script>
 
-<DonutChart {files} {matches} {chromosomeInfo} {showDuplicates} {scale}/>
+<D3DonutChart {files} {matches} {chromosomeInfo} {showDuplicates}/>

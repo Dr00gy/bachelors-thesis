@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { FileData, BackendMatch, DonutSegment, MatchedRecord } from '$lib/types';
+    import { searchStore } from '$lib/searchStore';
 
     export let files: FileData[] = [];
     export let matches: BackendMatch[] = [];
@@ -28,17 +29,46 @@
     export let clearAllFilters: () => void = () => {};
 
     /**
-     * Search state
+     * Search state from store
      */
     let overviewSearchQuery = '';
     let matchesSearchQuery = '';
     
     /**
-     * Search type state
+     * Search type state from store
      */
     type SearchType = 'contig' | 'chromosome' | 'confidence';
     let overviewSearchType: SearchType = 'contig';
     let matchesSearchType: SearchType = 'contig';
+
+    /**
+     * Subscribe to search store
+     */
+    const unsubscribe = searchStore.subscribe(state => {
+        overviewSearchQuery = state.overviewSearchQuery;
+        matchesSearchQuery = state.matchesSearchQuery;
+        overviewSearchType = state.overviewSearchType;
+        matchesSearchType = state.matchesSearchType;
+    });
+
+    /**
+     * Update search store when local values change
+     */
+    $: if (overviewSearchQuery !== $searchStore.overviewSearchQuery) {
+        searchStore.update(state => ({ ...state, overviewSearchQuery }));
+    }
+
+    $: if (matchesSearchQuery !== $searchStore.matchesSearchQuery) {
+        searchStore.update(state => ({ ...state, matchesSearchQuery }));
+    }
+
+    $: if (overviewSearchType !== $searchStore.overviewSearchType) {
+        searchStore.update(state => ({ ...state, overviewSearchType }));
+    }
+
+    $: if (matchesSearchType !== $searchStore.matchesSearchType) {
+        searchStore.update(state => ({ ...state, matchesSearchType }));
+    }
 
     /**
      * Page jump editing state
@@ -234,6 +264,20 @@
         default: return 'Search...';
       }
     })();
+
+    /**
+     * Reset pagination when search queries change
+     */
+    $: overviewSearchQuery, overviewSearchType, overviewPage = 1;
+    $: matchesSearchQuery, matchesSearchType, matchesPage = 1;
+
+    /**
+     * Cleanup store subscription
+     */
+    import { onDestroy } from 'svelte';
+    onDestroy(() => {
+        unsubscribe();
+    });
 </script>
 
 <div class="info">

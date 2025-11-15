@@ -4,25 +4,9 @@
    * @prop showDuplicates - Boolean controlling whether to show self-flow lines
    */
   export let showDuplicates = false;
-  export let scale = 1.0;
 </script>
 
-<div class="display-controls">
-  <div class="scale-control">
-    <label for="scale-slider">
-      Size: {Math.round(((scale - 1.0) / 1.2) * 100)}%
-    </label>
-    <input
-      id="scale-slider"
-      type="range"
-      min="1.0"
-      max="2.2"
-      step="0.1"
-      bind:value={scale}
-      class="scale-slider"
-    />
-  </div>
-  
+<div class="display-controls"> 
   <label class="toggle-label">
     <input type="checkbox" bind:checked={showDuplicates} />
     <span class="toggle-slider"></span>
@@ -34,23 +18,6 @@
   .display-controls {
     margin-top: 1rem;
     gap: 2rem;
-  }
-  
-  .scale-control {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  
-  .scale-control label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--text-primary);
-  }
-  
-  .scale-slider {
-    width: 300px;
-    margin-bottom: 0.8rem;
   }
   
   .toggle-label {
