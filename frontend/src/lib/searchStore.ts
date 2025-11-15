@@ -1,5 +1,8 @@
 import { writable } from 'svelte/store';
 
+/**
+ * Interface for searches on both app tabs
+ */
 interface SearchState {
   overviewSearchQuery: string;
   matchesSearchQuery: string;
@@ -8,6 +11,9 @@ interface SearchState {
   matchesSearchType: 'contig' | 'chromosome' | 'confidence';
 }
 
+/**
+ * Initial empty state
+ */
 const initialState: SearchState = {
   overviewSearchQuery: '',
   matchesSearchQuery: '',
